@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "SFA.DAS.EmploymentCheck.CloudService", "EmploymentCheck\SFA.DAS.EmploymentCheck.CloudService.ccproj", "{D967E103-4A1E-4DD2-B39B-695C4864D208}"
+EndProject
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "SFA.DAS.EmploymentCheck.Database", "SFA.DAS.EmploymentCheck.Database\SFA.DAS.EmploymentCheck.Database.sqlproj", "{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SFA.DAS.EmploymentCheck.Application", "SFA.DAS.EmploymentCheck.Application\SFA.DAS.EmploymentCheck.Application.csproj", "{613A0433-0D23-4781-BD64-16CA44F9A3C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SFA.DAS.EmploymentCheck.Domain", "SFA.DAS.EmploymentCheck.Domain\SFA.DAS.EmploymentCheck.Domain.csproj", "{D863FAF4-69FC-4A92-A006-CBAF529AC6FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SFA.DAS.EmploymentCheck.Infrastructure", "SFA.DAS.EmploymentCheck.Infrastructure\SFA.DAS.EmploymentCheck.Infrastructure.csproj", "{57D61767-892C-450C-AE59-669F7C35A032}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D967E103-4A1E-4DD2-B39B-695C4864D208}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D967E103-4A1E-4DD2-B39B-695C4864D208}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D967E103-4A1E-4DD2-B39B-695C4864D208}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D967E103-4A1E-4DD2-B39B-695C4864D208}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A99F77D6-8906-465C-B2BC-C3F3984A8BF2}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{613A0433-0D23-4781-BD64-16CA44F9A3C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{613A0433-0D23-4781-BD64-16CA44F9A3C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{613A0433-0D23-4781-BD64-16CA44F9A3C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{613A0433-0D23-4781-BD64-16CA44F9A3C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D863FAF4-69FC-4A92-A006-CBAF529AC6FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D863FAF4-69FC-4A92-A006-CBAF529AC6FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D863FAF4-69FC-4A92-A006-CBAF529AC6FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D863FAF4-69FC-4A92-A006-CBAF529AC6FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57D61767-892C-450C-AE59-669F7C35A032}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57D61767-892C-450C-AE59-669F7C35A032}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57D61767-892C-450C-AE59-669F7C35A032}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57D61767-892C-450C-AE59-669F7C35A032}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
