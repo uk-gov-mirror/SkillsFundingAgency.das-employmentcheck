@@ -6,6 +6,7 @@ using SFA.DAS.EmploymentCheck.Application.Configuration;
 using SFA.DAS.EmploymentCheck.Domain.Models;
 using SFA.DAS.EmploymentCheck.Infrastructure.Interfaces;
 using Newtonsoft.Json;
+using SFA.DAS.EmploymentCheck.Domain.Interfaces;
 
 namespace SFA.DAS.EmploymentCheck.Infrastructure.Services
 {
@@ -13,14 +14,14 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Services
     {
         private readonly HmrcConfiguration _configuration;
         readonly IHttpClientWrapper _httpClientWrapper;
-        //private readonly ITotpService _totpService;
+        private readonly ITotpService _totpService;
 
-        public HmrcService(HmrcConfiguration configuration, IHttpClientWrapper httpClientWrapper)
+        public HmrcService(HmrcConfiguration configuration, IHttpClientWrapper httpClientWrapper, ITotpService totpService)
         {
             //_logger = logger;
             _configuration = configuration;
             _httpClientWrapper = httpClientWrapper;
-            //_totpService = totpService;
+            _totpService = totpService;
         }
 
         public string GenerateAuthRedirectUrl(string redirectUrl)

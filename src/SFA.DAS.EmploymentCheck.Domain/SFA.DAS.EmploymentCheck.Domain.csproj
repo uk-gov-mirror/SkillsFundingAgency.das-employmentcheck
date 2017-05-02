@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Interfaces\ITotpService.cs" />
     <Compile Include="Models\HmrcEmploymentResponse.cs" />
     <Compile Include="Models\HmrcTokenResponse.cs" />
     <Compile Include="Models\PAYECheckResult.cs" />
