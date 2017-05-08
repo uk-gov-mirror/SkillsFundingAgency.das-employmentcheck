@@ -14,7 +14,7 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
         {
         }
 
-        public async Task<T> GetEmploymentDetails<T>(int NINumber)
+        public async Task<T> GetEmploymentDetails<T>(string NINumber)
         {
             var result = await WithConnection(async c =>
             {

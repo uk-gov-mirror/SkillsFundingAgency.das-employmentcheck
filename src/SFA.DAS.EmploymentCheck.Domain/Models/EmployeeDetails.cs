@@ -3,14 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MediatR;
 
-namespace SFA.DAS.EmploymentCheck.Application.Commands.CreateEmploymentDetails
+namespace SFA.DAS.EmploymentCheck.Domain.Models
 {
-    public class CreateEmploymentDetailsCommand: IAsyncNotification 
-
+    public class EmployeeDetails
     {
-        public string EmploymentCheckId { get; set; }       
         public string Empref { get; set; }
         public string Nino { get; set; }
         public DateTime FromDate { get; set; }
