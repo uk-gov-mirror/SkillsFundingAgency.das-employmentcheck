@@ -1,10 +1,15 @@
-﻿using System;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Domain.Models
 {
-    public class HmrcEmploymentResponse
+    public class HmrcEmploymentCheckRequest
     {
+
         [JsonProperty("empref")]
         public string Empref { get; set; }
 
@@ -17,7 +22,5 @@ namespace SFA.DAS.EmploymentCheck.Domain.Models
         [JsonProperty("empref")]
         public DateTime ToDate { get; set; }
 
-        [JsonProperty("employed")]
-        public bool Employed { get; set; }
     }
 }

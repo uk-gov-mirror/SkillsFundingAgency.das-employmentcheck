@@ -1,14 +1,14 @@
-﻿using SFA.DAS.EmploymentCheck.Infrastructure.Interfaces;
-using System;
+﻿using System;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using System.Web;
+
 using System.Net.Http;
 using System.Net.Http.Headers;
 using SFA.DAS.EmploymentCheck.Application.Configuration;
+using SFA.DAS.EmploymentCheck.Application.Interfaces;
 
-namespace SFA.DAS.EmploymentCheck.Infrastructure.Services
+namespace SFA.DAS.EmploymentCheck.Application.Services
 {
     public class HttpClientWrapper : IHttpClientWrapper
     {

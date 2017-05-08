@@ -9,7 +9,7 @@ namespace SFA.DAS.EmploymentCheck.Application.Interfaces
         string GenerateAuthRedirectUrl(string redirectUrl);
 
         Task<HmrcTokenResponse> GetAuthenticationToken(string redirectUrl, string accessCode);
-        Task<HmrcEmploymentResponse> GetEmploymentStatus(string empRef, string nino, DateTime fromDate, DateTime toDate);
+        Task<HmrcEmploymentCheckResponse> GetEmploymentStatus(string empRef, string nino, DateTime fromDate, DateTime toDate);
         Task<HmrcTokenResponse> GetOgdAuthenticationToken();
     }
 }

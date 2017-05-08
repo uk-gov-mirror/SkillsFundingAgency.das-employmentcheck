@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Dapper;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -13,40 +14,38 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
         {
         }
 
-        public async Task<T> GetEmploymentCheck<T>(int NINumber)
+        public async Task<T> GetEmploymentDetails<T>(int NINumber)
         {
-            throw new NotImplementedException();
-
-            //var result = await WithConnection(async c =>
-            //{
-            //    //var parameters = new DynamicParameters();
-            //    //parameters.Add("@eventFeed", eventFeed, DbType.String);
+            var result = await WithConnection(async c =>
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("@niNumber", NINumber, DbType.String);
 
 
-            //        return await c.QuerySingleOrDefaultAsync<T>(
-            //        sql: "[Data_Load].[GetLastProcessedEventId]",
-            //        param: parameters,
-            //        commandType: CommandType.StoredProcedure);
+                return await c.QuerySingleOrDefaultAsync<T>(
+                sql: "[SFA.DAS.EmploymentCheck].[DAS_EmploymentDetails]",
+                param: parameters,
+                commandType: CommandType.StoredProcedure);
 
-            //});
-            //return result;
+            });
+            return result;
         }
 
-        public async Task StoreEmploymentCheck<T>(string eventFeed, T id)
+        public async Task StoreEmploymentDetails<T>(string paye, string nino, DateTime fromDate, DateTime toDate)
         {
-            throw new NotImplementedException();
+            await WithConnection(async c =>
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("@paye", paye, DbType.String);
+                parameters.Add("@nino", nino, DbType.String);
+                parameters.Add("@fromDate", nino, DbType.String);
+                parameters.Add("@toDate", nino, DbType.String);
 
-            //await WithConnection(async c =>
-            //{
-            //    var parameters = new DynamicParameters();
-            //    parameters.Add("@eventFeed", eventFeed, DbType.String);
-            //    parameters.Add("@lastProcessedEventId", id, DbType.String);
-
-            //    return await c.ExecuteAsync(
-            //        sql: "[Data_Load].[StoreLastProcessedEventId]",
-            //        param: parameters,
-            //        commandType: CommandType.StoredProcedure);
-            //});
+                return await c.ExecuteAsync(
+                    sql: "[SFA.DAS.EmploymentCheck].[DAS_EmploymentDetails]",
+                    param: parameters,
+                    commandType: CommandType.StoredProcedure);
+            });
         }
     }
 }

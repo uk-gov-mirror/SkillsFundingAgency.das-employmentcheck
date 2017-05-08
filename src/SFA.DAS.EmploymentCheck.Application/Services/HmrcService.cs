@@ -4,11 +4,10 @@ using System.Web;
 using SFA.DAS.EmploymentCheck.Application.Interfaces;
 using SFA.DAS.EmploymentCheck.Application.Configuration;
 using SFA.DAS.EmploymentCheck.Domain.Models;
-using SFA.DAS.EmploymentCheck.Infrastructure.Interfaces;
 using Newtonsoft.Json;
 using SFA.DAS.EmploymentCheck.Domain.Interfaces;
 
-namespace SFA.DAS.EmploymentCheck.Infrastructure.Services
+namespace SFA.DAS.EmploymentCheck.Application.Services
 {
     public class HmrcService: IHmrcService 
     {
@@ -51,11 +50,11 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Services
             return JsonConvert.DeserializeObject<HmrcTokenResponse>(response);
         }
 
-        public async Task<HmrcEmploymentResponse> GetEmploymentStatus(string empRef, string nino, DateTime fromDate, DateTime toDate)
+        public async Task<HmrcEmploymentCheckResponse> GetEmploymentStatus(string empRef, string nino, DateTime fromDate, DateTime toDate)
         {
             var url = $"apprenticeship-levy/epaye/{HttpUtility.UrlEncode(empRef)}/employment-check?nino={HttpUtility.UrlEncode(nino)}&fromDate={fromDate.ToShortDateString()}&toDate={toDate.ToShortDateString()}";
 
-            return await _httpClientWrapper.Get<HmrcEmploymentResponse>(_configuration.ServerToken, url);
+            return await _httpClientWrapper.Get<HmrcEmploymentCheckResponse>(_configuration.ServerToken, url);
         }
     }
 }

@@ -5,7 +5,7 @@ using Simonbu11.Otp.Totp;
 using System;
 using System.Globalization;
 
-namespace SFA.DAS.EmploymentCheck.Infrastructure.Services
+namespace SFA.DAS.EmploymentCheck.Application.Services
 {
     public class TotpService : ITotpService
     {

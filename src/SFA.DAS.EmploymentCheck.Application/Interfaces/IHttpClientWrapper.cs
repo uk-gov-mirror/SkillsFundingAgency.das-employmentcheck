@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace SFA.DAS.EmploymentCheck.Infrastructure.Interfaces
+namespace SFA.DAS.EmploymentCheck.Application.Interfaces
 {
     public interface IHttpClientWrapper
     {

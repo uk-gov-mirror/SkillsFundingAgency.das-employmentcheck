@@ -45,7 +45,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Interfaces\ITotpService.cs" />
-    <Compile Include="Models\HmrcEmploymentResponse.cs" />
+    <Compile Include="Models\HmrcEmploymentCheckRequest.cs" />
+    <Compile Include="Models\HmrcEmploymentCheckResponse.cs" />
     <Compile Include="Models\HmrcTokenResponse.cs" />
     <Compile Include="Models\PAYECheckResult.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

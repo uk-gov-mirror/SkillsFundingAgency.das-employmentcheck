@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MediatR, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MediatR.2.1.0\lib\net45\MediatR.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -50,6 +54,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\CreateEmploymentDetails\CreateEmploymentDetailsCommand.cs" />
+    <Compile Include="Commands\CreateEmploymentDetails\CreateEmploymentDetailsEventHandler.cs" />
     <Compile Include="Configuration\Configuration.cs" />
     <Compile Include="Configuration\HmrcConfiguration.cs" />
     <Compile Include="Configuration\IConfiguration.cs" />
@@ -65,9 +71,18 @@
       <Project>{d863faf4-69fc-4a92-a006-cbaf529ac6fd}</Project>
       <Name>SFA.DAS.EmploymentCheck.Domain</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SFA.DAS.EmploymentCheck.Infrastructure\SFA.DAS.EmploymentCheck.Infrastructure.csproj">
+      <Project>{57d61767-892c-450c-ae59-669f7c35a032}</Project>
+      <Name>SFA.DAS.EmploymentCheck.Infrastructure</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Commands\GetEmploymentStatus\" />
+    <Folder Include="Commands\GetILRSubmissionEvents\" />
+    <Folder Include="Commands\UpdateEmploymentCheck\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -30,6 +30,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Dapper, Version=1.50.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Dapper.1.50.2\lib\net451\Dapper.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -49,13 +53,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data\BaseRepository.cs" />
+    <Compile Include="Data\EmploymentCheckRepository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SFA.DAS.EmploymentCheck.Application\SFA.DAS.EmploymentCheck.Application.csproj">
-      <Project>{613a0433-0d23-4781-bd64-16ca44f9a3c6}</Project>
-      <Name>SFA.DAS.EmploymentCheck.Application</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SFA.DAS.EmploymentCheck.Domain\SFA.DAS.EmploymentCheck.Domain.csproj">
       <Project>{D863FAF4-69FC-4A92-A006-CBAF529AC6FD}</Project>
       <Name>SFA.DAS.EmploymentCheck.Domain</Name>
