@@ -16,7 +16,7 @@ namespace SFA.DAS.EmploymentCheck.Application.Commands.CreateEmploymentDetails
         
         public async Task Handle(CreateEmploymentDetailsCommand employee)
         {
-            await _repository.StoreEmploymentDetails<HmrcEmploymentCheckRequest>(employee.Empref, employee.Nino, employee.FromDate, employee.ToDate);
+            await _repository.StoreEmploymentCheck<HmrcEmploymentCheckRequest>(employee.Empref, employee.Nino, employee.FromDate, employee.ToDate);
         }
     }
 }

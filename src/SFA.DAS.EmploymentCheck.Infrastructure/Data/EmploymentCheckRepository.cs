@@ -14,7 +14,7 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
         {
         }
 
-        public async Task<T> GetEmploymentDetails<T>(string NINumber)
+        public async Task<T> GetEmploymentCheck<T>(string NINumber)
         {
             var result = await WithConnection(async c =>
             {
@@ -23,7 +23,7 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
 
 
                 return await c.QuerySingleOrDefaultAsync<T>(
-                sql: "[SFA.DAS.EmploymentCheck].[DAS_EmploymentDetails]",
+                sql: "[DAS_GetEmploymentDetails]",
                 param: parameters,
                 commandType: CommandType.StoredProcedure);
 
@@ -31,18 +31,18 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
             return result;
         }
 
-        public async Task StoreEmploymentDetails<T>(string paye, string nino, DateTime fromDate, DateTime toDate)
+        public async Task StoreEmploymentCheck<T>(string paye, string nino, DateTime fromDate, DateTime toDate)
         {
             await WithConnection(async c =>
             {
                 var parameters = new DynamicParameters();
                 parameters.Add("@paye", paye, DbType.String);
                 parameters.Add("@nino", nino, DbType.String);
-                parameters.Add("@fromDate", nino, DbType.String);
-                parameters.Add("@toDate", nino, DbType.String);
+                parameters.Add("@fromDate", fromDate, DbType.Date);
+                parameters.Add("@toDate", toDate, DbType.Date);
 
                 return await c.ExecuteAsync(
-                    sql: "[SFA.DAS.EmploymentCheck].[DAS_EmploymentDetails]",
+                    sql: "[DAS_StoreEmploymentCheck]",
                     param: parameters,
                     commandType: CommandType.StoredProcedure);
             });

@@ -1,4 +1,4 @@
-﻿CREATE TABLE [dbo].[DAS_EmploymentCheck]
+﻿CREATE TABLE [dbo].[DAS_EmployeeDetails]
 (
 	[Id] INT NOT NULL PRIMARY KEY, 
     [NINumber] NVARCHAR(9) NOT NULL, 
@@ -10,4 +10,4 @@
 
 GO
 
-CREATE INDEX [IX_DAS_EmploymentCheck_NINO] ON [dbo].[DAS_EmploymentCheck] ([NINumber])
+CREATE INDEX [IX_DAS_EmploymentCheck_NINO] ON [dbo].[DAS_EmployeeDetails] ([NINumber])
