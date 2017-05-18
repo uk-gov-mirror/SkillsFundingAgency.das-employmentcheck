@@ -1,6 +1,6 @@
 ﻿CREATE TABLE [dbo].[DAS_SubmissionEvents]
 (
-	[Id] INT NOT NULL PRIMARY KEY,
+	[Id] BIGINT NOT NULL PRIMARY KEY,
 	[ApprenticeshipId] Int NOT NULL,
 	[NiNumber] nvarchar(9) NULL,
 	[EmployerReferenceNumber] Int,

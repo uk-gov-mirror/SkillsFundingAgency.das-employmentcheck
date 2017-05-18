@@ -24,7 +24,7 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.IntegrationTests.Data
             var submissionsEvent = new SubmissionEvent();
             submissionsEvent.Id = eventid;
             submissionsEvent.NiNumber = nino;
-            submissionsEvent.IlrFileName = "IntegrationTest";
+            submissionsEvent.IlrFileName = "IntegrationTest-"+TestContext.CurrentContext.Test.Name;
             submissionsEvent.Uln = 1234567;
             submissionsEvent.AcademicYear = "1617";
             submissionsEvent.ApprenticeshipId = 1;
@@ -38,9 +38,9 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.IntegrationTests.Data
 
             await repo.StoreSubmissionEvents<SubmissionEvent>(submissionsPage);
 
-            var result = await repo.GetSubmissionEvent<SubmissionEvent>(nino);
+            var result = await repo.GetSubmissionEvent<SubmissionEvent>(eventid);
             
-            Assert.That(result, Is.EqualTo(eventid));
+            Assert.That(result.Id, Is.EqualTo(eventid));
             
         }
 

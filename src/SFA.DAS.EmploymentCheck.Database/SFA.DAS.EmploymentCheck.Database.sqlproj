@@ -68,7 +68,7 @@
     <Build Include="Tables\DAS_SubmissionEvents.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="StoredProcedures\DAS_StoreSubmissionEvents.sql" />
-    <None Include="StoredProcedures\DAS_GetSubmissionEvent.sql" />
+    <Build Include="StoredProcedures\DAS_StoreSubmissionEvents.sql" />
+    <Build Include="StoredProcedures\DAS_GetSubmissionEventById.sql" />
   </ItemGroup>
 </Project>

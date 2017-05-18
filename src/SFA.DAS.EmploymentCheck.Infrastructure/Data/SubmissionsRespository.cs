@@ -45,18 +45,23 @@ namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
             }
         }
 
-        public async Task<Int32> GetSubmissionEvent<T>(string eventId)
+        public async Task<T> GetSubmissionEvent<T>(long eventId)
         {
             var result = await WithConnection(async c =>
             {
-                var parameters = new DynamicParameters();
-                parameters.Add("@NiNumber", eventId, DbType.String);
 
-                return await c.ExecuteAsync(
-                    sql: "[DAS_GetSubmissionEvent]",
-                    param: parameters,
-                    commandType: CommandType.StoredProcedure);
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id", eventId, DbType.Int64);
+
+
+                return await c.QuerySingleOrDefaultAsync<T>(
+                sql: "[DAS_GetSubmissionEventById]",
+                param: parameters,
+                commandType: CommandType.StoredProcedure);
+
             });
+
             return result;
         }
 
