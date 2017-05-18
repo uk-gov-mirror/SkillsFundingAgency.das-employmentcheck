@@ -49,7 +49,7 @@
     <Compile Include="Models\HmrcEmploymentCheckRequest.cs" />
     <Compile Include="Models\HmrcEmploymentCheckResponse.cs" />
     <Compile Include="Models\HmrcTokenResponse.cs" />
-    <Compile Include="Models\PAYECheckResult.cs" />
+    <Compile Include="Models\EmploymentCheckResult.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

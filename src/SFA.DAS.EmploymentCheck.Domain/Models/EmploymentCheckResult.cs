@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace SFA.DAS.EmploymentCheck.Domain.Models
 {
-    public class PAYECheckResult
+    public class EmploymentCheckResult
     {
         [JsonProperty("empref")]
         public string empref { get; set; }

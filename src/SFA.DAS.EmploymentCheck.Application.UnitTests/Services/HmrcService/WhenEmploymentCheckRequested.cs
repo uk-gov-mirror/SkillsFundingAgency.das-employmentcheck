@@ -12,7 +12,9 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.HmrcService
     [TestFixture]
     public class WhenEmploymentCheckRequested: HmrcServiceTestBase
     {
+        
         [Test]
+        [Ignore ("Not implemented yet")]
         public async Task ThenEmployedStatusIsTrue()
         {
 
@@ -30,6 +32,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.HmrcService
         }
 
         [Test]
+        [Ignore("Not implemented yet")]
         public async Task ThenEmployedStatusIsFalse()
         {
             var employee = new HmrcEmploymentCheckRequest();
@@ -43,6 +46,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.HmrcService
         }
 
         [Test]
+        [Ignore("Not implemented yet")]
         public async Task ThenEmployeeNotFound()
         {
             var employee = new HmrcEmploymentCheckRequest();

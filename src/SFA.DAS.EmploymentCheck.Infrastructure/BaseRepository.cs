@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SFA.DAS.EmploymentCheck.Infrastructure.Data
+namespace SFA.DAS.EmploymentCheck.Infrastructure
 {
     public abstract class BaseRepository
     {

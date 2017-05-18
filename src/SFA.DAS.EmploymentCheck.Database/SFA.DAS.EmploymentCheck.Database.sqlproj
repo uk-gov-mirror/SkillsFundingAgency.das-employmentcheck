@@ -65,5 +65,10 @@
     <Build Include="StoredProcedures\DAS_GetEmploymentDetails.sql" />
     <Build Include="StoredProcedures\DAS_StoreEmploymentDetails.sql" />
     <Build Include="Tables\DAS_EmploymentCheck.sql" />
+    <Build Include="Tables\DAS_SubmissionEvents.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="StoredProcedures\DAS_StoreSubmissionEvents.sql" />
+    <None Include="StoredProcedures\DAS_GetSubmissionEvent.sql" />
   </ItemGroup>
 </Project>
