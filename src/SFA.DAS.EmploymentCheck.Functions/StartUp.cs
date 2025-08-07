@@ -102,7 +102,7 @@ namespace SFA.DAS.EmploymentCheck.Functions
 
             var logger = serviceProvider.GetService<ILoggerProvider>().CreateLogger(GetType().AssemblyQualifiedName);
             var applicationSettings = config.GetSection("ApplicationSettings").Get<ApplicationSettings>();
-            
+
             builder.Services
                 .AddCommandServices()
                 .AddQueryServices()
@@ -110,8 +110,7 @@ namespace SFA.DAS.EmploymentCheck.Functions
                 .AddEmploymentCheckService(config[EnvironmentName])
                 .AddPersistenceServices()
                 .AddNServiceBusClientUnitOfWork()
-                .AddNServiceBus(applicationSettings)
-                .AddNServiceBusMessageHandlers(logger, applicationSettings);
+                .AddNServiceBus(applicationSettings);
         }
     }
 }

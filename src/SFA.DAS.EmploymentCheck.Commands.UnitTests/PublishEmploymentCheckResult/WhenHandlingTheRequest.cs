@@ -34,6 +34,7 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.PublishEmploymentCheckResul
         {
             // Arrange
             var request = _fixture.Create<PublishEmploymentCheckResultCommand>();
+            var publishOptions = new PublishOptions(); // 🔧 force use of non-optional param
 
             // Act
             await _sut.Handle(request, CancellationToken.None);
@@ -41,13 +42,17 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.PublishEmploymentCheckResul
             // Assert
             _messageSessionMock.Verify(
                 _ => _.Publish(
-                    It.Is<EmploymentCheckCompletedEvent>(c => 
-                        c.CorrelationId == request.EmploymentCheck.CorrelationId
-                        && c.CheckDate == request.EmploymentCheck.LastUpdatedOn
-                        && c.EmploymentResult == request.EmploymentCheck.Employed
-                        && c.ErrorType == request.EmploymentCheck.ErrorType),
-                    It.IsAny<PublishOptions>()
-                    ), Times.Once);
+                    It.Is<EmploymentCheckCompletedEvent>(c =>
+                        c.CorrelationId == request.EmploymentCheck.CorrelationId &&
+                        c.CheckDate == request.EmploymentCheck.LastUpdatedOn &&
+                        c.EmploymentResult == request.EmploymentCheck.Employed &&
+                        c.ErrorType == request.EmploymentCheck.ErrorType
+                    ),
+                    It.IsAny<PublishOptions>(),
+                    It.IsAny<CancellationToken>()
+                ),
+                Times.Once
+            );
         }
     }
 }
