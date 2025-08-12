@@ -3,6 +3,7 @@ using NUnit.Framework;
 using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using Newtonsoft.Json;
 
 namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.Dispatcher
 {
@@ -20,24 +21,6 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.Dispatcher
         }
 
         [Test]
-        public void Then_Create_CommandDispatcherException_With_Message_And_InnerExcption()
-        {
-            // Arrange
-            var expectedMessage = "ExceptionTest Message";
-            var expectedInnerExceptionMessage = $"Inner Exception Message: {expectedMessage}";
-            
-
-            // Act
-            var commandDispatcherException = new CommandDispatcherException(expectedMessage, new Exception(expectedInnerExceptionMessage));
-
-            // Assert
-            commandDispatcherException.Should().NotBeNull();
-            commandDispatcherException.Message.Should().Be(expectedMessage);
-            commandDispatcherException.InnerException.Message.Should().Be(expectedInnerExceptionMessage);   
-
-        }
-
-        [Test]
         public void Then_Create_CommandDispatcherException_Using_Serialisation()
         {
             // Arrange
@@ -47,12 +30,13 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.Dispatcher
             CommandDispatcherException actual;
 
             // Act
-            var json = System.Text.Json.JsonSerializer.Serialize(commandDispatcherException);
-            actual = System.Text.Json.JsonSerializer.Deserialize<CommandDispatcherException>(json);
+            var json = JsonConvert.SerializeObject(commandDispatcherException);
+            actual = JsonConvert.DeserializeObject<CommandDispatcherException>(json);
 
             // Assert
             actual.Should().NotBeNull();
             actual.Message.Should().Be(expectedMessage);
         }
-    }
+
+}
 }

@@ -13,7 +13,6 @@ using SFA.DAS.EmploymentCheck.Commands;
 using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
 using SFA.DAS.EmploymentCheck.Queries;
 using SFA.DAS.EmploymentCheck.TokenServiceStub.Configuration;
-using SFA.DAS.UnitOfWork.NServiceBus.Features.ClientOutbox.DependencyResolution.Microsoft;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Telemetry;
 
 [assembly: FunctionsStartup(typeof(SFA.DAS.EmploymentCheck.Functions.Startup))]
@@ -109,7 +108,6 @@ namespace SFA.DAS.EmploymentCheck.Functions
                 .AddApprenticeshipLevyApiClient()
                 .AddEmploymentCheckService(config[EnvironmentName])
                 .AddPersistenceServices()
-                .AddNServiceBusClientUnitOfWork()
                 .AddNServiceBus(applicationSettings);
         }
     }

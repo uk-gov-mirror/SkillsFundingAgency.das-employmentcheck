@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using NUnit.Framework;
 using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace SFA.DAS.EmploymentCheck.Queries.UnitTests.Dispatcher
 {
@@ -22,11 +23,9 @@ namespace SFA.DAS.EmploymentCheck.Queries.UnitTests.Dispatcher
             // Arrange
             var expectedMessage = "ExceptionTest Message";
             var queryDispatcherException = new QueryDispatcherException(expectedMessage);
-            QueryDispatcherException actual;
 
-            // Act
-            var json = JsonSerializer.Serialize(queryDispatcherException);
-            actual = JsonSerializer.Deserialize<QueryDispatcherException>(json);
+            var json = JsonConvert.SerializeObject(queryDispatcherException);
+            var actual = JsonConvert.DeserializeObject<QueryDispatcherException>(json);
 
             // Assert
             actual.Should().NotBeNull();

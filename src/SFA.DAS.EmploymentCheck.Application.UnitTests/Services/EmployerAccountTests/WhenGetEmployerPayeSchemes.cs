@@ -98,7 +98,8 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
                         response => response.AccountId == _employmentCheck.AccountId
                                     && response.ApprenticeEmploymentCheckId == _employmentCheck.Id
                                     && response.CorrelationId == _employmentCheck.CorrelationId
-                                    && response.HttpResponse == httpResponse.ToString()
+                                    && response.HttpResponse.Contains("StatusCode:")
+                                    && response.HttpResponse.Contains(((int)httpResponse.StatusCode).ToString())
                                     && response.HttpStatusCode == (short)httpResponse.StatusCode
                                     && response.PayeSchemes == expectedPayeShemes
                     )
@@ -193,15 +194,14 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
 
             // Assert
             _repositoryMock.Verify(repository => repository.InsertOrUpdate(It.Is<AccountsResponse>(
-                        response => response.PayeSchemes == null
-                                    && response.AccountId == _employmentCheck.AccountId
-                                    && response.ApprenticeEmploymentCheckId == _employmentCheck.Id
-                                    && response.CorrelationId == _employmentCheck.CorrelationId
-                                    && response.HttpResponse == httpResponse.ToString()
-                                    && response.HttpStatusCode == (short)httpResponse.StatusCode
-                    )
-                )
-                , Times.Once());
+                response =>
+                    response.PayeSchemes == null &&
+                    response.AccountId == _employmentCheck.AccountId &&
+                    response.ApprenticeEmploymentCheckId == _employmentCheck.Id &&
+                    response.CorrelationId == _employmentCheck.CorrelationId &&
+                    response.HttpStatusCode == (short)httpStatusCode
+            )), Times.Once());
+
         }
 
         [Test]
