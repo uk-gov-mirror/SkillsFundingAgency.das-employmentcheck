@@ -43,10 +43,10 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.PublishEmploymentCheckResul
             _messageSessionMock.Verify(
                 _ => _.Publish(
                     It.Is<EmploymentCheckCompletedEvent>(c =>
-                        c.CorrelationId == request.EmploymentCheck.CorrelationId &&
-                        c.CheckDate == request.EmploymentCheck.LastUpdatedOn &&
-                        c.EmploymentResult == request.EmploymentCheck.Employed &&
-                        c.ErrorType == request.EmploymentCheck.ErrorType
+                        c.CorrelationId == request.EmploymentCheck.CorrelationId
+                        && c.CheckDate == request.EmploymentCheck.LastUpdatedOn
+                        && c.EmploymentResult == request.EmploymentCheck.Employed
+                        && c.ErrorType == request.EmploymentCheck.ErrorType
                     ),
                     It.IsAny<PublishOptions>(),
                     It.IsAny<CancellationToken>()

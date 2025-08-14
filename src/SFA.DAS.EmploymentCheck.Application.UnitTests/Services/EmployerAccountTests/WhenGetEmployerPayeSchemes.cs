@@ -195,12 +195,14 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
             // Assert
             _repositoryMock.Verify(repository => repository.InsertOrUpdate(It.Is<AccountsResponse>(
                 response =>
-                    response.PayeSchemes == null &&
-                    response.AccountId == _employmentCheck.AccountId &&
-                    response.ApprenticeEmploymentCheckId == _employmentCheck.Id &&
-                    response.CorrelationId == _employmentCheck.CorrelationId &&
-                    response.HttpStatusCode == (short)httpStatusCode
-            )), Times.Once());
+                    response.PayeSchemes == null
+                    && response.AccountId == _employmentCheck.AccountId
+                    && response.ApprenticeEmploymentCheckId == _employmentCheck.Id
+                    && response.CorrelationId == _employmentCheck.CorrelationId
+                    && response.HttpStatusCode == (short)httpStatusCode
+                    )
+                )
+                , Times.Once());
 
         }
 

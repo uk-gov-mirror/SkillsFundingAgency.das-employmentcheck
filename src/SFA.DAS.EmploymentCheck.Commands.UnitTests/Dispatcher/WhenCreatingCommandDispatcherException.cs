@@ -37,6 +37,5 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.Dispatcher
             actual.Should().NotBeNull();
             actual.Message.Should().Be(expectedMessage);
         }
-
-}
+    }
 }

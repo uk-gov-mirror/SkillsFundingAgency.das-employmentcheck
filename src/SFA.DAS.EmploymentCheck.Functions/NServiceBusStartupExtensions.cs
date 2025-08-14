@@ -28,13 +28,11 @@ public static class NServiceBusStartupExtensions
 
         if (appSettings.NServiceBusConnectionString.Equals("UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase))
         {
-            //Get transport object and set storage directory via extension method
             var transport = endpointConfiguration.UseTransport<LearningTransport>();
             transport.StorageDirectory(Path.Combine(Environment.CurrentDirectory, ".learningtransport"));
         }
         else
         {
-            // Use Azure Service Bus
             var transport = new AzureServiceBusTransport(appSettings.NServiceBusConnectionString);
             endpointConfiguration.UseTransport(transport);
         }
