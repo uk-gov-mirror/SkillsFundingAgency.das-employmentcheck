@@ -67,7 +67,7 @@
     <PackageReference Include="NServiceBus.Transport.AzureServiceBus" Version="3.2.1" />
     <PackageReference Include="NServiceBus.Newtonsoft.Json" Version="4.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.Text.Json" Version="8.0.4" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="System.Formats.Asn1" Version="8.0.3" />
   </ItemGroup>
 
