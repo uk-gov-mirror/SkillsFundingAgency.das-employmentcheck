@@ -70,7 +70,6 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="System.Formats.Asn1" Version="8.0.3" />
   </ItemGroup>
-
 	<ItemGroup>
     <ProjectReference Include="..\SFA.DAS.EmploymentCheck.Application\SFA.DAS.EmploymentCheck.Application.csproj" />
     <ProjectReference Include="..\SFA.DAS.EmploymentCheck.Commands\SFA.DAS.EmploymentCheck.Commands.csproj" />

@@ -34,7 +34,7 @@ namespace SFA.DAS.EmploymentCheck.Commands.UnitTests.PublishEmploymentCheckResul
         {
             // Arrange
             var request = _fixture.Create<PublishEmploymentCheckResultCommand>();
-            var publishOptions = new PublishOptions(); // 🔧 force use of non-optional param
+            var publishOptions = new PublishOptions();
 
             // Act
             await _sut.Handle(request, CancellationToken.None);

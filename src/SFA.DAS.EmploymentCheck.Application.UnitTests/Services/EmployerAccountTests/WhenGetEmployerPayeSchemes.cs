@@ -203,7 +203,6 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
                     )
                 )
                 , Times.Once());
-
         }
 
         [Test]
