@@ -22,14 +22,17 @@ public static class NServiceBusStartupExtensions
                 "System.ClientModel.dll"
             );
 
-        endpointConfiguration
-            .UseTransport<LearningTransport>()
-            .StorageDirectory(@"C:\dev\das-employmentcheck\.learningtransport");
-
         if (appSettings.NServiceBusConnectionString.Equals("UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase))
         {
+            var rootDir = Directory.GetCurrentDirectory();
+            var baseDir = rootDir.Contains("src")
+                ? rootDir.Substring(0, rootDir.IndexOf("src", StringComparison.OrdinalIgnoreCase))
+                : rootDir;
+
+            var learningTransportDir = Path.Combine(baseDir, "src", ".learningtransport");
+
             var transport = endpointConfiguration.UseTransport<LearningTransport>();
-            transport.StorageDirectory(Path.Combine(Environment.CurrentDirectory, ".learningtransport"));
+            transport.StorageDirectory(learningTransportDir);
         }
         else
         {

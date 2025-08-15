@@ -18,7 +18,7 @@ namespace SFA.DAS.EmploymentCheck.Queries.UnitTests.Dispatcher
         }
 
         [Test]
-        public void Then_Create_QueryDispatcherException_Using_Serialization()
+        public void Then_Create_QueryDispatcherException_Using_Serialisation()
         {
             // Arrange
             var expectedMessage = "ExceptionTest Message";
