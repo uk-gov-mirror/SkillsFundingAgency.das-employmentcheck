@@ -119,6 +119,9 @@
         },
         "deployPrivateLinkedScopedResource": {
             "type": "bool"
+        },
+        "serviceBusConnectionString": {
+            "type": "securestring"
         }
     },
     "variables": {
@@ -346,6 +349,10 @@
                                 {
                                     "name": "WEBSITE_RUN_FROM_PACKAGE",
                                     "value": "1"
+                                },
+                                {
+                                    "name": "ServiceBusConnectionString",
+                                    "value": "[parameters('serviceBusConnectionString')]"
                                 }
                             ]
                         }
@@ -467,6 +474,10 @@
                                 {
                                     "name": "LoggingRedisKey",
                                     "value": "[parameters('loggingRedisKey')]"
+                                },
+                                {
+                                    "name": "ServiceBusConnectionString",
+                                    "value": "[parameters('serviceBusConnectionString')]"
                                 }
                             ]
                         }
