@@ -120,7 +120,7 @@
         "deployPrivateLinkedScopedResource": {
             "type": "bool"
         },
-        "serviceBusConnectionString": {
+        "nServiceBusConnectionString": {
             "type": "securestring"
         }
     },
@@ -352,7 +352,7 @@
                                 },
                                 {
                                     "name": "NServiceBusConnectionString",
-                                    "value": "[parameters('serviceBusConnectionString')]"
+                                    "value": "[parameters('nServiceBusConnectionString')]"
                                 }
                             ]
                         }
