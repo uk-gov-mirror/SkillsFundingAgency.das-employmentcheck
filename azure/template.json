@@ -122,6 +122,9 @@
         },
         "nServiceBusConnectionString": {
             "type": "securestring"
+        },
+        "serviceBusConnectionString": {
+            "type": "securestring"
         }
     },
     "variables": {
