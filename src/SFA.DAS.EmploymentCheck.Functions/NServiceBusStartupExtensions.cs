@@ -46,7 +46,6 @@ public static class NServiceBusStartupExtensions
             }
             else
             {
-                // Default: Managed Identity
                 if(string.IsNullOrWhiteSpace(appSettings.NServiceBusConnectionString))
                 {
                     throw new InvalidOperationException(
