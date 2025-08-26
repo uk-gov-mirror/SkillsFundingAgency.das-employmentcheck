@@ -4,6 +4,8 @@ using NServiceBus.Newtonsoft.Json;
 using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
 using System;
 using System.IO;
+using Azure.Identity;
+using NServiceBus.Transport.AzureServiceBus;
 
 public static class NServiceBusStartupExtensions
 {
@@ -22,7 +24,7 @@ public static class NServiceBusStartupExtensions
                 "System.ClientModel.dll"
             );
 
-        if (appSettings.NServiceBusConnectionString.Equals("UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase))
+        if (appSettings.NServiceBusConnectionString?.Equals("UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase) == true)
         {
             var rootDir = Directory.GetCurrentDirectory();
             var baseDir = rootDir.Contains("src")
@@ -31,13 +33,28 @@ public static class NServiceBusStartupExtensions
 
             var learningTransportDir = Path.Combine(baseDir, "src", ".learningtransport");
 
-            var transport = endpointConfiguration.UseTransport<LearningTransport>();
-            transport.StorageDirectory(learningTransportDir);
+            var learning = endpointConfiguration.UseTransport<LearningTransport>();
+            learning.StorageDirectory(learningTransportDir);
         }
         else
         {
-            var transport = new AzureServiceBusTransport(appSettings.NServiceBusConnectionString);
-            endpointConfiguration.UseTransport(transport);
+            var transport = endpointConfiguration.UseTransport<AzureServiceBusTransport>();
+
+            if (appSettings.UseNServiceBusConnectionString || (appSettings.NServiceBusConnectionString?.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase) ?? false))
+            {
+                transport.ConnectionString(appSettings.NServiceBusConnectionString);
+            }
+            else
+            {
+                // Default: Managed Identity
+                if(string.IsNullOrWhiteSpace(appSettings.NServiceBusConnectionString))
+                {
+                    throw new InvalidOperationException(
+                        "ApplicationSettings:NServiceBusConnectionString must be set to either a full connection string or a namespace when using Managed Identity.");
+                }
+
+                transport.CustomTokenCredential(appSettings.NServiceBusConnectionString, new DefaultAzureCredential());
+            }
         }
 
         endpointConfiguration.UseSerialization<NewtonsoftJsonSerializer>();
