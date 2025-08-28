@@ -356,6 +356,10 @@
                                 {
                                     "name": "NServiceBusConnectionString",
                                     "value": "[parameters('nServiceBusConnectionString')]"
+                                },
+                                {
+                                    "name": "FUNCTIONS_INPROC_NET8_ENABLED",
+                                    "value": "1"
                                 }
                             ]
                         }
