@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System;
+using System.Text.RegularExpressions;
+using Azure.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;
 using NServiceBus.Newtonsoft.Json;
-using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
-using System;
-using System.IO;
-using Azure.Identity;
 using NServiceBus.Transport.AzureServiceBus;
+using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
 
 public static class NServiceBusStartupExtensions
 {
@@ -24,36 +24,16 @@ public static class NServiceBusStartupExtensions
                 "System.ClientModel.dll"
             );
 
-        if (appSettings.NServiceBusConnectionString?.Equals("UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase) == true)
+        var raw = appSettings.NServiceBusConnectionString?.Trim();
+
+        if (string.Equals(raw, "UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase))
         {
-            var rootDir = Directory.GetCurrentDirectory();
-            var baseDir = rootDir.Contains("src")
-                ? rootDir.Substring(0, rootDir.IndexOf("src", StringComparison.OrdinalIgnoreCase))
-                : rootDir;
-
-            var learningTransportDir = Path.Combine(baseDir, "src", ".learningtransport");
-
-            var learning = endpointConfiguration.UseTransport<LearningTransport>();
-            learning.StorageDirectory(learningTransportDir);
+            endpointConfiguration.UseTransport<LearningTransport>();
         }
         else
         {
             var transport = endpointConfiguration.UseTransport<AzureServiceBusTransport>();
-
-            if (appSettings.UseNServiceBusConnectionString || (appSettings.NServiceBusConnectionString?.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                transport.ConnectionString(appSettings.NServiceBusConnectionString);
-            }
-            else
-            {
-                if(string.IsNullOrWhiteSpace(appSettings.NServiceBusConnectionString))
-                {
-                    throw new InvalidOperationException(
-                        "ApplicationSettings:NServiceBusConnectionString must be set to either a full connection string or a namespace when using Managed Identity.");
-                }
-
-                transport.CustomTokenCredential(appSettings.NServiceBusConnectionString, new DefaultAzureCredential());
-            }
+            ConfigureAzureServiceBusTransport(transport, raw);
         }
 
         endpointConfiguration.UseSerialization<NewtonsoftJsonSerializer>();
@@ -64,5 +44,35 @@ public static class NServiceBusStartupExtensions
         services.AddSingleton<IMessageSession>(endpointInstance);
 
         return services;
+    }
+
+    private static void ConfigureAzureServiceBusTransport(
+        TransportExtensions<AzureServiceBusTransport> transport,
+        string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException(
+                "ApplicationSettings:NServiceBusConnectionString is required. " +
+                "Set 'UseLearningEndpoint=true' locally or 'Endpoint=sb://<ns>.servicebus.windows.net/' in Azure.");
+
+        var hasKey = value.IndexOf("SharedAccessKey", StringComparison.OrdinalIgnoreCase) >= 0;
+        var hasSas = value.IndexOf("SharedAccessSignature", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        var endpointMatch = Regex.Match(value, @"Endpoint=sb:\/\/(?<host>[^\/;]+)", RegexOptions.IgnoreCase);
+        if (endpointMatch.Success && !(hasKey || hasSas))
+        {
+            var fqdn = endpointMatch.Groups["host"].Value.Trim();
+            transport.CustomTokenCredential(fqdn, new DefaultAzureCredential());
+            return;
+        }
+
+        if (!value.Contains(";") && value.Contains(".servicebus.windows.net", StringComparison.OrdinalIgnoreCase))
+        {
+            var cleaned = value.Replace("sb://", "", StringComparison.OrdinalIgnoreCase).TrimEnd('/');
+            transport.CustomTokenCredential(cleaned, new DefaultAzureCredential());
+            return;
+        }
+
+        transport.ConnectionString(value);
     }
 }
