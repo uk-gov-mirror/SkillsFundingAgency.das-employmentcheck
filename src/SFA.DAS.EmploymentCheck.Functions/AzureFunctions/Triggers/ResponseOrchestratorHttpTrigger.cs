@@ -1,13 +1,11 @@
 ﻿using System;
-using System.Linq;
 using System.Net;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Extensions.Logging;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
-using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
+using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
 {
@@ -15,31 +13,37 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
     {
         private const string InstanceIdPrefix = "ResponseEmploymentCheck-";
 
-        [FunctionName("ResponseEmploymentChecksHttpTrigger")]
-        public static async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orchestrators/ResponseOrchestrator")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+        [Function("ResponseEmploymentChecksHttpTrigger")]
+        public static async Task<HttpResponseData> HttpStart(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orchestratorresponse")] HttpRequestData req,
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext context)
         {
-            var triggerHelper = new TriggerHelper();
-            var existingInstances = await triggerHelper.GetRunningInstances(nameof(ResponseOrchestratorHttpTrigger),
-                InstanceIdPrefix, starter, log);
-
-            if (!existingInstances.DurableOrchestrationState.Any())
+            var query = new OrchestrationQuery
             {
-                log.LogInformation($"Triggering {nameof(ResponseOrchestrator)}");
+                InstanceIdPrefix = InstanceIdPrefix,
+                Statuses = new[]
+                {
+                    OrchestrationRuntimeStatus.Pending,
+                    OrchestrationRuntimeStatus.Running,
+                    OrchestrationRuntimeStatus.ContinuedAsNew
+                }
+            };
 
-                string instanceId = await starter.StartNewAsync(nameof(ResponseOrchestrator), $"{InstanceIdPrefix}{Guid.NewGuid()}");
-
-                log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
-
-                return starter.CreateCheckStatusResponse(req, instanceId);
+            await foreach (var _ in starter.GetAllInstancesAsync(query))
+            {
+                var conflict = req.CreateResponse(HttpStatusCode.Conflict);
+                await conflict.WriteStringAsync("An instance of ResponseOrchestrator is already running.");
+                return conflict;
             }
 
-            return new HttpResponseMessage(HttpStatusCode.Conflict)
+            var options = new StartOrchestrationOptions
             {
-                Content = new StringContent($"An instance of {nameof(ResponseOrchestrator)} is already running."),
+                InstanceId = $"{InstanceIdPrefix}{Guid.NewGuid()}"
             };
+
+            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(new TaskName(nameof(ResponseOrchestrator)), input: null, options: options);
+            return starter.CreateCheckStatusResponse(req, instanceId, HttpStatusCode.Accepted);
         }
     }
 }

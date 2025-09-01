@@ -1,24 +1,21 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+﻿using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
-using System.Net.Http;
-using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
 {
     public static class EmploymentChecksHttpTrigger
     {
-        [FunctionName(nameof(EmploymentChecksHttpTrigger))]
-        public static async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orchestrators/EmploymentChecksOrchestrator")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log
-        )
+        [Function(nameof(EmploymentChecksHttpTrigger))]
+        public static async Task<HttpResponseData> HttpStart(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orchestrators/EmploymentChecksOrchestrator")] HttpRequestData req,
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext context)
         {
-            ITriggerHelper triggerHelper
-                = new TriggerHelper(nameof(CreateEmploymentCheckCacheRequestsOrchestrator), nameof(ProcessEmploymentCheckRequestsOrchestrator));
+            var log = context.GetLogger(nameof(EmploymentChecksHttpTrigger));
+            ITriggerHelper triggerHelper = new TriggerHelper();
             return await triggerHelper.StartTheEmploymentCheckOrchestrators(req, starter, log, triggerHelper);
         }
     }

@@ -1,19 +1,18 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
+﻿using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Extensions;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
-using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
 {
     public static class EmploymentChecksTimerTrigger
     {
-        [FunctionName(nameof(EmploymentChecksTimerTrigger))]
+        [Function(nameof(EmploymentChecksTimerTrigger))]
         public static async Task EmploymentChecksTimerTriggerTask(
-            [TimerTrigger("%EmploymentCheckTriggerTime%")] TimerInfo timerInfo,
-            [DurableClient] IDurableOrchestrationClient starter, ILogger log
-        )
+            [TimerTrigger("%EmploymentCheckTriggerTime%")] object timerIgnored,
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext context)
         {
             await starter.StartIfNotRunning(nameof(CreateEmploymentCheckCacheRequestsOrchestrator));
             await starter.StartIfNotRunning(nameof(ProcessEmploymentCheckRequestsOrchestrator));

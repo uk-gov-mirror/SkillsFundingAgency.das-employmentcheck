@@ -1,27 +1,28 @@
-﻿using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+﻿using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
-using System.Threading.Tasks;
+using Microsoft.DurableTask;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
 {
     public interface ITriggerHelper
     {
-        Task<OrchestrationStatusQueryResult> GetRunningInstances(
+        Task<OrchestrationMetadata?> GetRunningInstances(
             string orchestratorName,
             string instanceIdPrefix,
-            IDurableOrchestrationClient starter,
+            DurableTaskClient starter,
             ILogger log);
 
-        Task<HttpResponseMessage> StartTheEmploymentCheckOrchestrators(
-            HttpRequestMessage req,
-            IDurableOrchestrationClient starter,
+        Task<HttpResponseData> StartTheEmploymentCheckOrchestrators(
+            HttpRequestData req,
+            DurableTaskClient starter,
             ILogger log,
             ITriggerHelper triggerHelper);
 
-        Task<HttpResponseMessage> StartOrchestrator(
-            HttpRequestMessage req,
-            IDurableOrchestrationClient starter,
+        Task<HttpResponseData> StartOrchestrator(
+            HttpRequestData req,
+            DurableTaskClient starter,
             ILogger log,
             ITriggerHelper triggerHelper,
             string orchestratorName,

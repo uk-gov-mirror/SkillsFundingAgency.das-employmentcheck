@@ -1,14 +1,14 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+﻿using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities;
-using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators
 {
     public class ResponseOrchestrator
     {
-        [FunctionName(nameof(ResponseOrchestrator))]
-        public async Task ResponseOrchestratorTask([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(ResponseOrchestrator))]
+        public async Task ResponseOrchestratorTask([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var loop = true;
             while (loop)

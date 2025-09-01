@@ -1,9 +1,9 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+﻿using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using SFA.DAS.EmploymentCheck.Abstractions;
 using SFA.DAS.EmploymentCheck.Commands.StoreCompletedEmploymentCheck;
 using SFA.DAS.EmploymentCheck.Data.Models;
-using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
 {
@@ -16,7 +16,7 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
             _dispatcher = dispatcher;
         }
 
-        [FunctionName(nameof(StoreCompletedEmploymentCheckActivity))]
+        [Function(nameof(StoreCompletedEmploymentCheckActivity))]
         public async Task Store([ActivityTrigger] EmploymentCheckData employmentCheckData)
         {
             await _dispatcher.Send(new StoreCompletedEmploymentCheckCommand(employmentCheckData.EmploymentCheck));

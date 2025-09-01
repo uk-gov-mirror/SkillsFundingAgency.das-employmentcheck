@@ -1,15 +1,14 @@
 ﻿using System;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace SFA.DAS.EmploymentCheck.AcceptanceTests
 {
     public static class WebJobsBuilderExtensions
     {
-        public static IWebJobsBuilder ConfigureServices(this IWebJobsBuilder builder, Action<IServiceCollection> configure)
+        public static IHostBuilder ConfigureServices(this IHostBuilder builder, Action<IServiceCollection> configure)
         {
-            configure(builder.Services);
-            return builder;
+            return builder.ConfigureServices((_, s) => configure(s));
         }
     }
 }

@@ -1,87 +1,55 @@
 ﻿using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
-using AutoFixture;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers;
+using SFA.DAS.EmploymentCheck.Functions.UnitTests.TestHelpers;
 
 namespace SFA.DAS.EmploymentCheck.Functions.UnitTests.AzureFunctions.Triggers.ProcessEmploymentChecksHttpTriggerTests
 {
     public class WhenTriggeringHttpProcessEmploymentChecks
     {
-        private Mock<HttpRequestMessage> _request;
-        private Mock<IDurableOrchestrationClient> _starter;
-        private Mock<ILogger> _logger;
-        private Fixture _fixture;
+        private static async IAsyncEnumerable<OrchestrationMetadata> Empty() { yield break; }
+        private static async IAsyncEnumerable<OrchestrationMetadata> Single() { yield return default; }
 
-        [SetUp]
-        public void SetUp()
+        [Test]
+        public async Task Returns_Conflict_When_Already_Running()
         {
-            _fixture = new Fixture();
-            _request = new Mock<HttpRequestMessage>();
-            _starter = new Mock<IDurableOrchestrationClient>();
-            _logger = new Mock<ILogger>();
+            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
+            client.Setup(c => c.GetAllInstancesAsync(It.IsAny<OrchestrationQuery>()))
+                  .Returns(new TestAsyncPageable<OrchestrationMetadata>(Single()));
+
+            var logger = new Mock<ILogger>().Object;
+            var ctx = new TestFunctionContext(logger);
+            var req = new TestHttpRequestData(ctx, "POST");
+
+            HttpResponseData res = await ProcessEmploymentChecksOrchestratorHttpTrigger.HttpStart(req, client.Object, ctx);
+
+            Assert.AreEqual(HttpStatusCode.Conflict, res.StatusCode);
         }
 
         [Test]
-        public async Task Then_The_Instance_Id_Is_Created_When_no_other_instances_are_running()
+        public async Task Returns_Accepted_When_Not_Running()
         {
-            // Arrange
-            string instanceId = _fixture.Create<string>();
-            var response = new HttpResponseMessage(HttpStatusCode.Accepted);
+            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
+            client.Setup(c => c.GetAllInstancesAsync(It.IsAny<OrchestrationQuery>()))
+                  .Returns(new TestAsyncPageable<OrchestrationMetadata>(Empty()));
+            client.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
+                    It.IsAny<TaskName>(), null, It.IsAny<StartOrchestrationOptions>(), default))
+                  .ReturnsAsync("id");
 
-            _starter.Setup(x => x.StartNewAsync(nameof(ProcessEmploymentCheckRequestsOrchestrator), It.IsAny<string>()))
-                .ReturnsAsync(instanceId);
-            _starter.Setup(x => x.CreateCheckStatusResponse(_request.Object, instanceId, false))
-                .Returns(response);
+            var logger = new Mock<ILogger>().Object;
+            var ctx = new TestFunctionContext(logger);
+            var req = new TestHttpRequestData(ctx, "POST");
 
-            var instances = new OrchestrationStatusQueryResult
-            {
-                DurableOrchestrationState = new List<DurableOrchestrationStatus>(0)
-            };
+            HttpResponseData res = await ProcessEmploymentChecksOrchestratorHttpTrigger.HttpStart(req, client.Object, ctx);
 
-            _starter.Setup(x =>
-                    x.ListInstancesAsync(It.IsAny<OrchestrationStatusQueryCondition>(), CancellationToken.None))
-                .ReturnsAsync(instances);
-
-            // Act
-            var result = await ProcessEmploymentChecksOrchestratorHttpTrigger.HttpStart(_request.Object, _starter.Object, _logger.Object);
-
-            // Assert
-
-            Assert.AreEqual(response, result);
-            Assert.AreEqual(response.StatusCode, result.StatusCode);
-        }
-
-        [Test]
-        public async Task Then_The_Instance_Id_Is_Not_Created_When_other_instances_are_running()
-        {
-            // Arrange
-            string instanceId = _fixture.Create<string>();
-
-            _starter.Setup(x => x.StartNewAsync(nameof(ProcessEmploymentCheckRequestsOrchestrator), It.IsAny<string>()))
-                .ReturnsAsync(instanceId);
-
-            var instances = new OrchestrationStatusQueryResult
-            {
-                DurableOrchestrationState = new[] { new DurableOrchestrationStatus() }
-            };
-
-            _starter.Setup(x =>
-                    x.ListInstancesAsync(It.IsAny<OrchestrationStatusQueryCondition>(), CancellationToken.None))
-                .ReturnsAsync(instances);
-
-            // Act
-            var result = await ProcessEmploymentChecksOrchestratorHttpTrigger.HttpStart(_request.Object, _starter.Object, _logger.Object);
-
-            // Assert
-            Assert.AreEqual(HttpStatusCode.Conflict, result.StatusCode);
+            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
         }
     }
 }

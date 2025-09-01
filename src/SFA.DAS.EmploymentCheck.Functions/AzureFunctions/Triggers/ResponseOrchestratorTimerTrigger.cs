@@ -1,10 +1,10 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
 {
@@ -12,23 +12,36 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
     {
         private const string InstanceIdPrefix = "Response-";
 
-        [FunctionName(nameof(ResponseOrchestratorTimerTriggerTask))]
-        public static async Task ResponseOrchestratorTimerTriggerTask([TimerTrigger("%ResponseOrchestratorTriggerTime%")]
-            TimerInfo timerInfo,
-           [DurableClient] IDurableOrchestrationClient starter, ILogger log)
+        [Function(nameof(ResponseOrchestratorTimerTriggerTask))]
+        public static async Task ResponseOrchestratorTimerTriggerTask(
+            [TimerTrigger("%ResponseOrchestratorSchedule%")] object timerIgnored,
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext context)
         {
-            var triggerHelper = new TriggerHelper();
-            var existingInstances = await triggerHelper.GetRunningInstances(nameof(ResponseOrchestratorTimerTrigger),
-                InstanceIdPrefix, starter, log);
-
-            if (!existingInstances.DurableOrchestrationState.Any())
+            var log = context.GetLogger(nameof(ResponseOrchestratorTimerTrigger));
+            var query = new OrchestrationQuery
             {
-                log.LogInformation($"Triggering {nameof(ResponseOrchestrator)}");
+                InstanceIdPrefix = InstanceIdPrefix,
+                Statuses = new[]
+                {
+                    OrchestrationRuntimeStatus.Pending,
+                    OrchestrationRuntimeStatus.Running,
+                    OrchestrationRuntimeStatus.ContinuedAsNew
+                }
+            };
 
-                var instanceId = await starter.StartNewAsync(nameof(ResponseOrchestrator), $"{InstanceIdPrefix}{Guid.NewGuid()}");
-
-                log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+            await foreach (var _ in starter.GetAllInstancesAsync(query))
+            {
+                log.LogInformation("ResponseOrchestrator already running, not starting a new instance.");
+                return;
             }
+
+            var options = new StartOrchestrationOptions
+            {
+                InstanceId = $"{InstanceIdPrefix}{Guid.NewGuid()}"
+            };
+
+            await starter.ScheduleNewOrchestrationInstanceAsync(new TaskName(nameof(ResponseOrchestrator)), input: null, options: options);
         }
     }
 }

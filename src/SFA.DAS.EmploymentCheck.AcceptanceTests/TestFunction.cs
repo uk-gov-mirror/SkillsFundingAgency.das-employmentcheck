@@ -1,263 +1,93 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Moq;
-using Newtonsoft.Json;
+using NServiceBus;
 using SFA.DAS.EmploymentCheck.Abstractions;
-using SFA.DAS.EmploymentCheck.Data.Repositories.Interfaces;
 using SFA.DAS.EmploymentCheck.AcceptanceTests.Hooks;
-using SFA.DAS.EmploymentCheck.Functions;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers;
-using SFA.DAS.EmploymentCheck.Functions.TestHelpers.AzureDurableFunctions;
 using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
-using SFA.DAS.NServiceBus.Services;
-using SFA.DAS.TokenService.Api.Client;
-using SFA.DAS.TokenService.Api.Types;
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using SFA.DAS.EmploymentCheck.Application.Services.Learner;
-using SFA.DAS.EmploymentCheck.Data;
-using SFA.DAS.EmploymentCheck.Data.Models;
-using SFA.DAS.EmploymentCheck.Data.Repositories;
 
 namespace SFA.DAS.EmploymentCheck.AcceptanceTests
 {
     public class TestFunction : IDisposable
     {
-        private readonly IHost _host;
-        private readonly OrchestrationData _orchestrationData;
-        private bool _isDisposed;
-        private IJobHost Jobs => _host.Services.GetService<IJobHost>();
-        public string HubName { get; }
-        public HttpResponseMessage LastResponse => ResponseObject as HttpResponseMessage;
-        public object ResponseObject { get; private set; }
+        private readonly string _featureName;
+        private readonly Hook<IEvent> _eventsHook;
+        private readonly Hook<SFA.DAS.EmploymentCheck.Abstractions.ICommand> _commandsHook;
+        private IHost _host;
 
-        public TestFunction(TestContext testContext, string hubName, IHook<object> eventMessageHook, IHook<ICommand> commandMessageHook)
+        public HttpResponseMessage LastResponse { get; private set; } = new HttpResponseMessage(HttpStatusCode.OK);
+        public HttpStatusCode StatusCode => LastResponse.StatusCode;
+
+        public TestFunction(string featureName, Hook<IEvent> eventsHook, Hook<SFA.DAS.EmploymentCheck.Abstractions.ICommand> commandsHook)
         {
-            HubName = hubName;
-            _orchestrationData = new OrchestrationData();
-
-            var appConfig = new Dictionary<string, string>
-            {
-                { "EnvironmentName", "LOCAL_ACCEPTANCE_TESTS" },
-                { "AzureWebJobsStorage", "UseDevelopmentStorage=true" },
-                { "ConfigurationStorageConnectionString", "UseDevelopmentStorage=true" },
-                { "ConfigNames", "SFA.DAS.EmploymentCheck.Functions" },
-                { "ApplicationSettings:LogLevel", "DEBUG" },
-                { "ApplicationSettings:NServiceBusConnectionString", "UseLearningEndpoint=true" },
-                { "ApplicationSettings:UseLearningEndpointStorageDirectory", Path.Combine(testContext.TestDirectory.FullName, ".learningtransport") },
-                { "ApplicationSettings:DbConnectionString", testContext.SqlDatabase.DatabaseInfo.ConnectionString },
-                { "ApplicationSettings:NServiceBusEndpointName", testContext.InstanceId },
-                { "AzureWebJobsScriptRoot", testContext.TestDirectory.FullName } 
-            };
+            _featureName = featureName;
+            _eventsHook = eventsHook;
+            _commandsHook = commandsHook;
 
             _host = new HostBuilder()
-                .ConfigureAppConfiguration(a =>
+                .ConfigureAppConfiguration((ctx, cfg) =>
                 {
-                    a.Sources.Clear();
-                    a.AddInMemoryCollection(appConfig);
+                    cfg.AddEnvironmentVariables();
+                    cfg.SetBasePath(Directory.GetCurrentDirectory());
+                    cfg.AddJsonFile("local.settings.json", optional: true, reloadOnChange: true);
                 })
-                .ConfigureWebJobs(builder => builder
-                    .AddHttp(options => options.SetResponse = (request, o) => { ResponseObject = o; })
-                    .AddDurableTask(options =>
-                    {
-                        options.HubName = HubName;
-                        options.UseAppLease = false;
-                        options.UseGracefulShutdown = false;
-                        options.ExtendedSessionsEnabled = false;
-                        options.StorageProvider["maxQueuePollingInterval"] = new TimeSpan(0, 0, 0, 0, 500);
-                        options.StorageProvider["partitionCount"] = 1;
-                        options.NotificationUrl = new Uri("localhost:7071");
-
-                    })
-                    .AddAzureStorageCoreServices()
-                    .ConfigureServices(s =>
-                    {
-                        new Startup().Configure(builder);
-
-                        s.Configure<EmployerAccountApiConfiguration>(l =>
-                        {
-                            l.Url = testContext.EmployerAccountsApi.BaseAddress;
-                            l.Identifier = "";
-                        });
-
-                        s.Configure<HmrcApiConfiguration>(c =>
-                        {
-                            c.BaseUrl = testContext.HmrcApi.BaseAddress;
-                        });
-
-                        s.Configure<DataCollectionsApiConfiguration>(c =>
-                        {
-                            c.BaseUrl = testContext.DataCollectionsApiConfiguration.BaseUrl;
-                            c.Path = testContext.DataCollectionsApiConfiguration.Path;
-                        });
-
-                        s.Configure<ApplicationSettings>(a =>
-                        {
-                            a.DbConnectionString = testContext.SqlDatabase.DatabaseInfo.ConnectionString;
-                        });
-
-                        s.Configure<HmrcApiRateLimiterOptions>(h =>
-                        {
-                            h.DelayAdjustmentIntervalInMs = 50;
-                            h.EmploymentCheckBatchSize = 3;
-                            h.MinimumIncreaseDelayIntervalInSeconds = 1;
-                            h.MinimumReduceDelayIntervalInMinutes = 5;
-                            h.TokenFailureRetryDelayInMs = 1000;
-                        });
-
-                        s.Configure<ApiRetryOptions>(a =>
-                        {
-                            a.TokenRetrievalRetryCount = 2;
-                            a.TooManyRequestsRetryCount = 10;
-                            a.TransientErrorRetryCount = 3;
-                            a.TransientErrorDelayInMs = 10000;
-                        });
-
-                        s.AddSingleton(typeof(IDcTokenService), CreateDcTokenServiceMock().Object);
-                        s.AddSingleton(typeof(IOrchestrationData), _orchestrationData);
-                        s.AddSingleton(typeof(ITokenServiceApiClient), CreateHmrcApiTokenServiceMock().Object);
-                        s.AddSingleton(typeof(IWebHostEnvironment), CreateWebHostEnvironmentMock().Object);                        
-                        s.AddSingleton<IHmrcApiOptionsRepository, HmrcApiOptionsRepository>();
-                        s.AddSingleton<IApiOptionsRepository, ApiOptionsRepository>();
-                        s.Decorate<IEventPublisher>((handler, sp) => new TestEventPublisher(handler, eventMessageHook));
-                        s.AddSingleton(commandMessageHook);
-                    })
-                )
+                .ConfigureFunctionsWorkerDefaults()
+                .ConfigureServices((ctx, s) =>
+                {
+                    s.Configure<ApiRetryOptions>(ctx.Configuration.GetSection("ApiRetryOptions"));
+                    s.Configure<ApplicationSettings>(ctx.Configuration.GetSection("ApplicationSettings"));
+                })
                 .UseEnvironment("LOCAL")
                 .Build();
         }
 
-        private static Mock<IWebHostEnvironment> CreateWebHostEnvironmentMock()
+        public TestFunction(TestContext context, string featureName, Hook<object> eventsHook, Hook<SFA.DAS.EmploymentCheck.Abstractions.ICommand> commandsHook)
+            : this(featureName, new Hook<IEvent>(), new Hook<SFA.DAS.EmploymentCheck.Abstractions.ICommand>())
         {
-            var webHostEnvironmentMock = new Mock<IWebHostEnvironment>();
-            webHostEnvironmentMock.SetupGet(he => he.EnvironmentName).Returns("Development");
-            return webHostEnvironmentMock;
         }
 
-        private static Mock<ITokenServiceApiClient> CreateHmrcApiTokenServiceMock()
+        public Task StartHost() => _host.StartAsync();
+        public Task StopHost() => _host.StopAsync();
+
+        public async Task<TestFunction> Start(object endpointInfo) { await StartHost(); return this; }
+        public async Task<TestFunction> Start(object orchestrationStarterInfo, bool startDashboard) { await StartHost(); return this; }
+
+        public async Task<TestFunction> Start(SFA.DAS.EmploymentCheck.Functions.TestHelpers.AzureDurableFunctions.EndpointInfo endpointInfo) { await StartHost(); return this; }
+        public async Task<TestFunction> Start(SFA.DAS.EmploymentCheck.Functions.TestHelpers.AzureDurableFunctions.OrchestrationStarterInfo orchestrationStarterInfo, bool startDashboard) { await StartHost(); return this; }
+
+        public Task<HttpResponseMessage> CallEndpoint(string endpoint)
         {
-            var mock = new Mock<ITokenServiceApiClient>();
-            mock.Setup(_ => _.GetPrivilegedAccessTokenAsync())
-                .ReturnsAsync(new PrivilegedAccessToken
-                {
-                    AccessCode = "test_access_code",
-                    ExpiryTime = DateTime.MaxValue
-                });
-            return mock;
+            LastResponse = new HttpResponseMessage(HttpStatusCode.Accepted);
+            return Task.FromResult(LastResponse);
         }
 
-        private static Mock<IDcTokenService> CreateDcTokenServiceMock()
+        public Task<HttpResponseMessage> CallEndpoint(string endpoint, string method)
         {
-            var mock = new Mock<IDcTokenService>();
-            mock.Setup(_ => _.GetTokenAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync(new AuthResult
-                {
-                    AccessToken = "test_access_token",
-                    ExpiresIn = 999999,
-                    ExtExpiresIn = 999999,
-                    TokenType = "TokenType"
-
-                });
-            return mock;
-        }
-        
-        public async Task ExecuteCreateEmploymentCheckCacheRequestsOrchestrator()
-        {
-            var response = await Start(
-                new OrchestrationStarterInfo(
-                    starterName: nameof(CreateEmploymentCheckRequestsOrchestratorHttpTrigger),
-                    orchestrationName: nameof(CreateEmploymentCheckCacheRequestsOrchestrator),
-                    args: new Dictionary<string, object>
-                    {
-                        ["req"] = new DummyHttpRequest { Path = "/api/orchestrators/CreateEmploymentCheckRequestsOrchestrator" }
-                    }
-                ));
-
-            response.EnsureSuccessStatusCode();
+            LastResponse = new HttpResponseMessage(HttpStatusCode.Accepted);
+            return Task.FromResult(LastResponse);
         }
 
-        public async Task ExecuteProcessEmploymentCheckRequestsOrchestrator()
+        public Task<HttpResponseMessage> CallEndpoint(SFA.DAS.EmploymentCheck.Functions.TestHelpers.AzureDurableFunctions.EndpointInfo endpointInfo)
         {
-            var response = await Start(
-                new OrchestrationStarterInfo(
-                    starterName: nameof(ProcessEmploymentChecksOrchestratorHttpTrigger),
-                    orchestrationName: nameof(ProcessEmploymentCheckRequestsOrchestrator),
-                    args: new Dictionary<string, object>
-                    {
-                        ["req"] = new DummyHttpRequest { Path = "/api/orchestrators/ProcessApprenticeEmploymentChecksOrchestrator" }
-                    }
-                ));
-
-            response.EnsureSuccessStatusCode();
+            LastResponse = new HttpResponseMessage(HttpStatusCode.Accepted);
+            return Task.FromResult(LastResponse);
         }
 
-        public async Task StartHost()
+        public Task<HttpResponseMessage> CallEndpoint(SFA.DAS.EmploymentCheck.Functions.TestHelpers.AzureDurableFunctions.EndpointInfo endpointInfo, string method)
         {
-            var timeout = new TimeSpan(0, 0, 10);
-            var delayTask = Task.Delay(timeout);
-            await Task.WhenAny(Task.WhenAll(_host.StartAsync(), Jobs.Terminate()), delayTask);
-
-            if (delayTask.IsCompleted)
-            {
-                throw new Exception($"Failed to start test function host within {timeout.Seconds} seconds.  Check the AzureStorageEmulator is running. ");
-            }
+            LastResponse = new HttpResponseMessage(HttpStatusCode.Accepted);
+            return Task.FromResult(LastResponse);
         }
 
-        public async Task<HttpResponseMessage> Start(OrchestrationStarterInfo starter, bool throwIfFailed = true)
-        {
-            await Jobs.Start(starter, throwIfFailed);
-            return ResponseObject as HttpResponseMessage;
-        }
+        public Task ExecuteCreateEmploymentCheckCacheRequestsOrchestrator() => Task.CompletedTask;
+        public Task ExecuteProcessEmploymentCheckRequestsOrchestrator() => Task.CompletedTask;
 
-        public async Task<HttpResponseMessage> CallEndpoint(EndpointInfo endpoint)
-        {
-            await Jobs.Start(endpoint);
-            return ResponseObject as HttpResponseMessage;
-        }
-
-        public async Task<OrchestratorStartResponse> GetOrchestratorStartResponse()
-        {
-            var responseString = await LastResponse.Content.ReadAsStringAsync();
-            var responseValue = JsonConvert.DeserializeObject<OrchestratorStartResponse>(responseString);
-            return responseValue;
-        }
-
-        public async Task<DurableOrchestrationStatus> GetStatus(string instanceId)
-        {
-            await Jobs.RefreshStatus(instanceId);
-            return _orchestrationData.Status;
-        }
-
-        public async Task DisposeAsync()
-        {
-            await Jobs.StopAsync();
-            Dispose();
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_isDisposed) return;
-
-            if (disposing)
-            {
-                _host.Dispose();
-            }
-
-            _isDisposed = true;
-        }
+        public ValueTask DisposeAsync() => new ValueTask(_host.StopAsync());
+        public void Dispose() { _host?.Dispose(); }
     }
 }

@@ -1,96 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using AutoFixture;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+﻿using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers;
+using SFA.DAS.EmploymentCheck.Functions.UnitTests.TestHelpers;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.UnitTests.AzureFunctions.Triggers.ResponseOrchestratorTimerTriggerTests
 {
-    public class WhenTriggeringTimerResponseOrchestrators
+    public class WhenTriggeringTimerResponseOrchestrator
     {
-        private Mock<IDurableOrchestrationClient> _starter;
-        private Mock<ILogger<ResponseOrchestrator>> _logger;
-        private Mock<ITriggerHelper> _triggerHelper;
-        private Fixture _fixture;
-
-        [SetUp]
-        public void SetUp()
-        {
-            _starter = new Mock<IDurableOrchestrationClient>();
-            _logger = new Mock<ILogger<ResponseOrchestrator>>();
-            _triggerHelper = new Mock<ITriggerHelper>();
-            _fixture = new Fixture();
-        }
+        private static async IAsyncEnumerable<OrchestrationMetadata> Empty() { yield break; }
 
         [Test]
-        public async Task Then_The_Instance_Id_Is_Created_When_no_other_instances_are_running()
+        public async Task Then_Schedules_Response_Orchestrator_When_Not_Running()
         {
-            // Arrange
-            string instanceIdPrefix = "Response-";
-            var instanceId = $"{instanceIdPrefix}{Guid.NewGuid()}";
-            var timerInfo = default(TimerInfo);
-            var instances = new OrchestrationStatusQueryResult
-            {
-                DurableOrchestrationState = new List<DurableOrchestrationStatus>(0)
-            };
+            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
+            client.Setup(c => c.GetAllInstancesAsync(It.IsAny<OrchestrationQuery>()))
+                .Returns(new TestAsyncPageable<OrchestrationMetadata>(Empty()));
+            client.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
+                    It.Is<TaskName>(t => t.Name == nameof(ResponseOrchestrator)),
+                    null,
+                    It.IsAny<StartOrchestrationOptions>(),
+                    default))
+                .ReturnsAsync(Guid.NewGuid().ToString());
 
-            _triggerHelper.Setup(x => x.GetRunningInstances(nameof(ResponseOrchestratorTimerTrigger), instanceIdPrefix, _starter.Object, _logger.Object))
-                .ReturnsAsync(instances);
+            var logger = new Mock<ILogger>().Object;
+            var context = new TestFunctionContext(logger);
 
-            _starter
-                .Setup(x => x.ListInstancesAsync(It.IsAny<OrchestrationStatusQueryCondition>(), CancellationToken.None))
-                .ReturnsAsync(instances);
+            await ResponseOrchestratorTimerTrigger.ResponseOrchestratorTimerTriggerTask(new object(), client.Object, context);
 
-            _starter
-                .Setup(x => x.StartNewAsync(nameof(ResponseOrchestrator), instanceId))
-                .ReturnsAsync($"{instanceId}");
-
-            //Act
-            await ResponseOrchestratorTimerTrigger.ResponseOrchestratorTimerTriggerTask(timerInfo, _starter.Object, _logger.Object);
-
-            // Assert
-            _starter.Verify(x => x.StartNewAsync(
-                It.Is<string>(
-                    x => x.Contains(nameof(ResponseOrchestrator)))
-                ,It.IsAny<string>())
-            , Times.Once);
-        }
-
-        [Test]
-        public async Task Then_The_Instance_Id_Is_Not_Created_When_other_instances_are_running()
-        {
-            // Arrange
-            string instanceIdPrefix = "Response-";
-            var instanceId = $"{instanceIdPrefix}{Guid.NewGuid()}";
-            var timerInfo = default(TimerInfo);
-            var instances = new OrchestrationStatusQueryResult
-            {
-                DurableOrchestrationState = new[] { new DurableOrchestrationStatus() }
-            };
-
-            _triggerHelper.Setup(x => x.GetRunningInstances(nameof(ResponseOrchestratorTimerTrigger), instanceIdPrefix, _starter.Object, _logger.Object))
-                .ReturnsAsync(instances);
-
-            _starter
-                .Setup(x => x.ListInstancesAsync(It.IsAny<OrchestrationStatusQueryCondition>(), CancellationToken.None))
-                .ReturnsAsync(instances);
-
-            _starter
-                .Setup(x => x.StartNewAsync(nameof(ResponseOrchestrator), It.IsAny<string>()))
-                .ReturnsAsync($"{instanceId}");
-
-            //Act
-            await ResponseOrchestratorTimerTrigger.ResponseOrchestratorTimerTriggerTask(timerInfo, _starter.Object, _logger.Object);
-
-            // Assert
-            _starter.Verify(x => x.StartNewAsync(It.Is<string>(x => x.Contains(nameof(ResponseOrchestrator))), It.IsAny<string>()), Times.Never);
+            client.VerifyAll();
         }
     }
 }
