@@ -1,46 +1,47 @@
-﻿using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers;
-using SFA.DAS.EmploymentCheck.Functions.UnitTests.TestHelpers;
-using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.UnitTests.AzureFunctions.Triggers.EmploymentCheckTimerTriggerTests
 {
     public class WhenEmploymentChecksTimerTrigger
     {
-        private static async IAsyncEnumerable<OrchestrationMetadata> Empty() { yield break; }
-
         [Test]
-        public async Task Then_Runs_Both_Orchestrators_When_No_Instances()
+        public async Task ThenRunningEmploymentChecksTimerTrigger()
         {
-            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
-            client.Setup(c => c.GetAllInstancesAsync(It.IsAny<OrchestrationQuery>()))
-                  .Returns(new TestAsyncPageable<OrchestrationMetadata>(Empty()));
-            client.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
-                    It.Is<TaskName>(t => t.Name == nameof(CreateEmploymentCheckCacheRequestsOrchestrator)),
-                    null,
-                    It.IsAny<StartOrchestrationOptions>(),
-                    default))
-                  .ReturnsAsync(Guid.NewGuid().ToString());
-            client.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
-                    It.Is<TaskName>(t => t.Name == nameof(ProcessEmploymentCheckRequestsOrchestrator)),
-                    null,
-                    It.IsAny<StartOrchestrationOptions>(),
-                    default))
-                  .ReturnsAsync(Guid.NewGuid().ToString());
+            // Arrange
+            var schedule = new DailySchedule("2:00:00");
+            var timerInfo = new TimerInfo(schedule, It.IsAny<ScheduleStatus>());
+            var mockDurableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
+            var mockLogger = new Mock<ILogger>();
 
-            var logger = new Mock<ILogger>().Object;
-            var context = new TestFunctionContext(logger);
+            mockDurableOrchestrationClient.Setup(c => c.ListInstancesAsync(
+                It.IsAny<OrchestrationStatusQueryCondition>(),
+                It.IsAny<CancellationToken>())).ReturnsAsync(new OrchestrationStatusQueryResult
+            {
+                DurableOrchestrationState = new List<DurableOrchestrationStatus>()
+            });
 
-            await EmploymentChecksTimerTrigger.EmploymentChecksTimerTriggerTask(new object(), client.Object, context);
+            // Act
+            await EmploymentChecksTimerTrigger.EmploymentChecksTimerTriggerTask(timerInfo, mockDurableOrchestrationClient.Object, mockLogger.Object);
 
-            client.VerifyAll();
+            // Assert
+            mockDurableOrchestrationClient.Verify(c =>
+                    c.StartNewAsync("CreateEmploymentCheckCacheRequestsOrchestrator",
+                        It.Is<string>(s => s.StartsWith("CreateEmploymentCheckCacheRequestsOrchestrator")))
+                , Times.Once);
+
+            mockDurableOrchestrationClient.Verify(c =>
+                    c.StartNewAsync("ProcessEmploymentCheckRequestsOrchestrator",
+                        It.Is<string>(s => s.StartsWith("ProcessEmploymentCheckRequestsOrchestrator")))
+                , Times.Once);
         }
     }
 }

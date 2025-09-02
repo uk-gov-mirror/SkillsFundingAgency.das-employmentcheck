@@ -1,11 +1,9 @@
-﻿using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
+﻿using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
-using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
 using System;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
@@ -19,83 +17,122 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
 
         private const string OrchestratorHttpTriggerNameSuffix = "HttpTrigger";
 
-        public TriggerHelper(
-            string createRequestsOrchestratorName = nameof(CreateEmploymentCheckCacheRequestsOrchestrator),
-            string processRequestsOrchestratorName = nameof(ProcessEmploymentCheckRequestsOrchestrator))
+        public TriggerHelper() { }
+
+        public TriggerHelper(string createRequestsOrchestratorName, string processRequestsOrchestratorName)
         {
             _createRequestsOrchestratorName = createRequestsOrchestratorName;
             _processRequestsOrchestratorName = processRequestsOrchestratorName;
-            _createRequestsOrchestratorTriggerName = $"{createRequestsOrchestratorName}{OrchestratorHttpTriggerNameSuffix}";
-            _processRequestsOrchestratorTriggerName = $"{processRequestsOrchestratorName}{OrchestratorHttpTriggerNameSuffix}";
+            _createRequestsOrchestratorTriggerName = _createRequestsOrchestratorName + OrchestratorHttpTriggerNameSuffix;
+            _processRequestsOrchestratorTriggerName = _processRequestsOrchestratorName + OrchestratorHttpTriggerNameSuffix;
         }
 
-        public async Task<OrchestrationMetadata?> GetRunningInstances(string orchestratorName, string instanceIdPrefix, DurableTaskClient starter, ILogger log)
+        public async Task<OrchestrationStatusQueryResult> GetRunningInstances(string orchestratorName, string instanceIdPrefix, IDurableOrchestrationClient starter, ILogger log)
         {
-            var query = new OrchestrationQuery
+            log.LogInformation($"Checking for running instances of {orchestratorName}");
+
+            var runningInstances = await starter.ListInstancesAsync(new OrchestrationStatusQueryCondition
             {
                 InstanceIdPrefix = instanceIdPrefix,
-                Statuses = new[]
+                RuntimeStatus = new[]
                 {
                     OrchestrationRuntimeStatus.Pending,
                     OrchestrationRuntimeStatus.Running,
                     OrchestrationRuntimeStatus.ContinuedAsNew
                 }
-            };
+            }, System.Threading.CancellationToken.None);
 
-            await foreach (var instance in starter.GetAllInstancesAsync(query))
-            {
-                return instance;
-            }
-
-            return null;
+            return runningInstances;
         }
 
-        public async Task<HttpResponseData> StartOrchestrator(
-            HttpRequestData req,
-            DurableTaskClient starter,
+        public async Task<HttpResponseMessage> StartTheEmploymentCheckOrchestrators(
+            HttpRequestMessage req,
+            IDurableOrchestrationClient starter,
+            ILogger log,
+            ITriggerHelper triggerHelper
+        )
+        {
+
+            var createRequestsOrchestratorResponseMessage =
+                await triggerHelper.StartOrchestrator(
+                    req,
+                    starter,
+                    log,
+                    triggerHelper,
+                    _createRequestsOrchestratorName,
+                    _createRequestsOrchestratorTriggerName);
+            if (createRequestsOrchestratorResponseMessage.StatusCode != HttpStatusCode.Accepted)
+            {
+                var content = await createRequestsOrchestratorResponseMessage.Content.ReadAsStringAsync();
+                content = $"Unable to start the CreateRequests Orchestrator: {content}\n";
+                createRequestsOrchestratorResponseMessage.Content = new StringContent(content);
+                return createRequestsOrchestratorResponseMessage;
+            }
+
+            var processRequestsOrchestratorResponseMessage =
+                await triggerHelper.StartOrchestrator(
+                    req,
+                    starter,
+                    log,
+                    triggerHelper,
+                    _processRequestsOrchestratorName,
+                    _processRequestsOrchestratorTriggerName);
+            if (processRequestsOrchestratorResponseMessage.StatusCode != HttpStatusCode.Accepted)
+            {
+                var content = await processRequestsOrchestratorResponseMessage.Content.ReadAsStringAsync();
+                content = $"Unable to start the ProcessRequests Orchestrator: [{content}]\n";
+                processRequestsOrchestratorResponseMessage.Content = new StringContent(content);
+                return processRequestsOrchestratorResponseMessage;
+            }
+
+            var browserHttpResponseMessage = new HttpResponseMessage(HttpStatusCode.Accepted)
+            {
+                Content = new StringContent($"{await createRequestsOrchestratorResponseMessage.Content.ReadAsStringAsync()}\n{await processRequestsOrchestratorResponseMessage.Content.ReadAsStringAsync()}")
+            };
+            return browserHttpResponseMessage;
+        }
+
+        public async Task<HttpResponseMessage> StartOrchestrator(
+            HttpRequestMessage req,
+            IDurableOrchestrationClient starter,
             ILogger log,
             ITriggerHelper triggerHelper,
             string orchestratorName,
-            string triggerName)
+            string triggerName
+        )
         {
-            var existingInstances = await triggerHelper.GetRunningInstances(orchestratorName, triggerName, starter, log);
-            if (existingInstances != null)
+            var existingInstances =
+                await triggerHelper.GetRunningInstances(triggerName, orchestratorName, starter, log);
+
+            if (existingInstances != null && existingInstances.DurableOrchestrationState.Any())
             {
-                var conflict = req.CreateResponse(HttpStatusCode.Conflict);
-                await conflict.WriteStringAsync($"An instance of {orchestratorName} is already running.");
-                return conflict;
+                var responseMessage = new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent($"An instance of {orchestratorName} is already running.") };
+                log.LogInformation(await responseMessage.Content.ReadAsStringAsync());
+                return responseMessage;
             }
 
-            var options = new StartOrchestrationOptions
+            log.LogInformation($"Triggering {orchestratorName}");
+            var instanceId = await starter.StartNewAsync(orchestratorName, $"{orchestratorName}-{Guid.NewGuid()}");
+            if(string.IsNullOrEmpty(instanceId))
             {
-                InstanceId = $"{triggerName}-{Guid.NewGuid()}"
-            };
-
-            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(new TaskName(orchestratorName), input: null, options: options);
-            return starter.CreateCheckStatusResponse(req, instanceId, HttpStatusCode.Accepted);
-        }
-
-        public async Task<HttpResponseData> StartTheEmploymentCheckOrchestrators(
-            HttpRequestData req,
-            DurableTaskClient starter,
-            ILogger log,
-            ITriggerHelper triggerHelper)
-        {
-            var first = await triggerHelper.StartOrchestrator(req, starter, log, triggerHelper, _createRequestsOrchestratorName, _createRequestsOrchestratorTriggerName);
-            if (first.StatusCode != HttpStatusCode.Accepted)
-            {
-                return first;
+                var responseMessage = new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent($"An error occurred starting [{orchestratorName}], no instance id was returned.") };
+                log.LogInformation(await responseMessage.Content.ReadAsStringAsync());
+                return responseMessage;
             }
 
-            var second = await triggerHelper.StartOrchestrator(req, starter, log, triggerHelper, _processRequestsOrchestratorName, _processRequestsOrchestratorTriggerName);
-            if (second.StatusCode != HttpStatusCode.Accepted)
+            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+            var responseHttpMessage = starter.CreateCheckStatusResponse(req, instanceId);
+            if(responseHttpMessage == null)
             {
-                var error = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await error.WriteStringAsync($"Unable to start {_processRequestsOrchestratorName} orchestrator.");
-                return error;
+                var responseMessage = new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent($"An error occurred getting the status of [{orchestratorName}] for instance Id [{instanceId}].") };
+                log.LogInformation(await responseMessage.Content.ReadAsStringAsync());
+                return responseMessage;
             }
 
-            return first;
+            var content = await responseHttpMessage.Content.ReadAsStringAsync();
+            var newContent = $"Started orchestrator [{orchestratorName}] with ID [{instanceId}]\n\n{content}\n\n";
+            responseHttpMessage.Content = new StringContent(newContent);
+            return responseHttpMessage;
         }
     }
 }

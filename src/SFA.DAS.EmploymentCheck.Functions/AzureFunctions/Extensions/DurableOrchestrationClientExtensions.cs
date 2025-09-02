@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Extensions
 {
@@ -15,25 +15,17 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Extensions
             OrchestrationRuntimeStatus.ContinuedAsNew
         };
 
-        public static async Task StartIfNotRunning(this DurableTaskClient starter, string orchestrator)
+        public static async Task StartIfNotRunning(this IDurableOrchestrationClient starter, string orchestrator)
         {
-            var query = new OrchestrationQuery
+            var runningInstances = await starter.ListInstancesAsync(new OrchestrationStatusQueryCondition
             {
                 InstanceIdPrefix = orchestrator,
-                Statuses = RuntimeStatuses
-            };
+                RuntimeStatus = RuntimeStatuses
+            }, System.Threading.CancellationToken.None);
 
-            await foreach (var _ in starter.GetAllInstancesAsync(query))
-            {
-                return;
-            }
+            if (runningInstances.DurableOrchestrationState.Any()) return;
 
-            var options = new StartOrchestrationOptions
-            {
-                InstanceId = $"{orchestrator}-{Guid.NewGuid()}"
-            };
-
-            await starter.ScheduleNewOrchestrationInstanceAsync(new TaskName(orchestrator), input: null, options: options);
+            await starter.StartNewAsync(orchestrator, $"{orchestrator}-{Guid.NewGuid()}");
         }
     }
 }

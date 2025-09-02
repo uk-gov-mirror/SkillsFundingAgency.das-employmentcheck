@@ -1,8 +1,8 @@
-﻿using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using SFA.DAS.EmploymentCheck.Abstractions;
 using SFA.DAS.EmploymentCheck.Commands.PublishEmploymentCheckResult;
+using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
 {
@@ -15,7 +15,7 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
             _dispatcher = dispatcher;
         }
 
-        [Function(nameof(OutputEmploymentCheckResultsActivity))]
+        [FunctionName(nameof(OutputEmploymentCheckResultsActivity))]
         public async Task Send([ActivityTrigger] Data.Models.EmploymentCheck employmentCheck)
         {
             await _dispatcher.Send(new PublishEmploymentCheckResultCommand(employmentCheck));

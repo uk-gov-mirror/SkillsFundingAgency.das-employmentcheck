@@ -1,36 +1,34 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
+using DurableTask.Core;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.HouseKeeping
 {
     public class CleanupWorkflowsTimer
     {
-        [Function(nameof(CleanupOldWorkflows))]
-        public async Task CleanupOldWorkflows(
-            [TimerTrigger("%CleanupOldWorkflowsTriggerTime%")] object timerIgnored,
-            [DurableClient] DurableTaskClient orchestrationClient,
-            FunctionContext context)
+        [FunctionName(nameof(CleanupOldWorkflows))]
+        public async Task CleanupOldWorkflows([TimerTrigger("%CleanupOldWorkflowsTriggerTime%")]
+            TimerInfo timerInfo,
+            [DurableClient] IDurableOrchestrationClient orchestrationClient, ILogger log)
         {
-            var log = context.GetLogger(nameof(CleanupWorkflowsTimer));
-
-            var createdTimeTo = DateTimeOffset.UtcNow.AddDays(-1);
-            var createdTimeFrom = createdTimeTo.AddDays(-7);
-
-            var statuses = new[]
+            var createdTimeFrom = DateTime.MinValue;
+            var createdTimeTo = DateTime.Now;
+            var runtimeStatus = new List<OrchestrationStatus>
             {
-                OrchestrationRuntimeStatus.Completed,
-                OrchestrationRuntimeStatus.Canceled,
-                OrchestrationRuntimeStatus.ContinuedAsNew,
-                OrchestrationRuntimeStatus.Failed,
-                OrchestrationRuntimeStatus.Terminated
+                OrchestrationStatus.Completed,
+                OrchestrationStatus.Canceled,
+                OrchestrationStatus.ContinuedAsNew,
+                OrchestrationStatus.Failed,
+                OrchestrationStatus.Terminated,
             };
 
-            await orchestrationClient.PurgeInstancesAsync(createdTimeFrom, createdTimeTo, statuses);
-            log.LogInformation("Scheduled cleanup complete.");
+            var result = await orchestrationClient.PurgeInstanceHistoryAsync(createdTimeFrom, createdTimeTo, runtimeStatus);
+            
+            log.LogInformation("Scheduled cleanup done, {InstancesDeleted} instances deleted", result.InstancesDeleted);
         }
     }
 }

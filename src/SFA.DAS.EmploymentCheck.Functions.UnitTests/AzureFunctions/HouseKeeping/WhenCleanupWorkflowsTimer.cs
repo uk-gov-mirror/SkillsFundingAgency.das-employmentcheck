@@ -1,10 +1,11 @@
-﻿using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
+﻿using DurableTask.Core;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.HouseKeeping;
-using SFA.DAS.EmploymentCheck.Functions.UnitTests.TestHelpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,35 +16,47 @@ namespace SFA.DAS.EmploymentCheck.Functions.UnitTests.AzureFunctions.HouseKeepin
     public class WhenCleanupWorkflowsTimer
     {
         [Test]
-        public async Task Then_Purges_Expected_Statuses_In_Last_Week()
+        public async Task ThenRunningCleanupWorkflowsTimer()
         {
-            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
-            client.Setup(c => c.PurgeInstancesAsync(
-                    It.IsAny<DateTimeOffset>(),
-                    It.IsAny<DateTimeOffset>(),
-                    It.IsAny<IReadOnlyCollection<OrchestrationRuntimeStatus>>(),
-                    default))
-                .ReturnsAsync(default(PurgeResult));
-
-            var logger = new Mock<ILogger>().Object;
-            var context = new TestFunctionContext(logger);
+            // Arrange
             var sut = new CleanupWorkflowsTimer();
+            var purgeHistoryResult = new PurgeHistoryResult(0);
+            var schedule = new DailySchedule("2:00:00");
+            var timerInfo = new TimerInfo(schedule, It.IsAny<ScheduleStatus>());
+            var mockDurableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
+            var mockLogger = new Mock<ILogger>();
 
-            await sut.CleanupOldWorkflows(new object(), client.Object, context);
+            mockDurableOrchestrationClient.Setup(x => x.PurgeInstanceHistoryAsync(It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<IEnumerable<OrchestrationStatus>>())).Returns(Task.FromResult(purgeHistoryResult));
 
-            client.Verify(c => c.PurgeInstancesAsync(
-                It.Is<DateTimeOffset>(d => d < DateTimeOffset.UtcNow),
-                It.Is<DateTimeOffset>(d => d <= DateTimeOffset.UtcNow),
-                It.Is<IReadOnlyCollection<OrchestrationRuntimeStatus>>(s =>
-                    s.SequenceEqual(new[]
-                    {
-                        OrchestrationRuntimeStatus.Completed,
-                        OrchestrationRuntimeStatus.Canceled,
-                        OrchestrationRuntimeStatus.ContinuedAsNew,
-                        OrchestrationRuntimeStatus.Failed,
-                        OrchestrationRuntimeStatus.Terminated
-                    })),
-                default), Times.Once);
+            // Act
+            await sut.CleanupOldWorkflows(timerInfo, mockDurableOrchestrationClient.Object, mockLogger.Object);
+
+            // Assert
+            mockDurableOrchestrationClient.Verify(c => c.PurgeInstanceHistoryAsync(DateTime.MinValue,
+                It.Is<DateTime>(d => IsCloseToNow(d)), It.Is<List<OrchestrationStatus>>(
+                    x => x.SequenceEqual(ExpectedRuntimeStatuses))));
+
+            mockLogger.Verify(m => m.Log(
+                It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString().StartsWith("Scheduled cleanup done, 0 instances deleted")),
+                It.IsAny<Exception>(),
+                (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()),
+                Times.Once);
+        }
+
+        public OrchestrationStatus[] ExpectedRuntimeStatuses => new[]
+        {
+            OrchestrationStatus.Completed,
+            OrchestrationStatus.Canceled,
+            OrchestrationStatus.ContinuedAsNew,
+            OrchestrationStatus.Failed,
+            OrchestrationStatus.Terminated
+        };
+
+        private static bool IsCloseToNow(DateTime dateTime)
+        {
+            return (DateTime.Now - dateTime).TotalMinutes < 1;
         }
     }
 }

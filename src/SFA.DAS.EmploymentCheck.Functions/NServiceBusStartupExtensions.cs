@@ -13,7 +13,19 @@ public static class NServiceBusStartupExtensions
     {
         var endpointConfiguration = new EndpointConfiguration("SFA.DAS.EmploymentCheck");
 
+        endpointConfiguration.AssemblyScanner()
+            .ExcludeAssemblies(
+                "Azure.Core.dll",
+                "Microsoft.Bcl.AsyncInterfaces.dll",
+                "System.Threading.Tasks.Extensions.dll",
+                "System.Reactive.Core.dll",
+                "System.Reactive.dll",
+                "System.Reactive.Linq.dll",
+                "System.ClientModel.dll"
+            );
+
         var raw = appSettings.NServiceBusConnectionString?.Trim();
+
         if (string.Equals(raw, "UseLearningEndpoint=true", StringComparison.OrdinalIgnoreCase))
         {
             endpointConfiguration.UseTransport<LearningTransport>();
@@ -34,27 +46,30 @@ public static class NServiceBusStartupExtensions
         return services;
     }
 
-    private static void ConfigureAzureServiceBusTransport(TransportExtensions<AzureServiceBusTransport> transport, string? value)
+    private static void ConfigureAzureServiceBusTransport(
+        TransportExtensions<AzureServiceBusTransport> transport,
+        string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             throw new InvalidOperationException(
                 "ApplicationSettings:NServiceBusConnectionString is required. " +
                 "Set 'UseLearningEndpoint=true' locally or 'Endpoint=sb://<ns>.servicebus.windows.net/' in Azure.");
 
-        var hasKey = value.Contains("SharedAccessKey", StringComparison.OrdinalIgnoreCase)
-                     || value.Contains("SharedAccessSignature", StringComparison.OrdinalIgnoreCase);
+        var hasKey = value.IndexOf("SharedAccessKey", StringComparison.OrdinalIgnoreCase) >= 0;
+        var hasSas = value.IndexOf("SharedAccessSignature", StringComparison.OrdinalIgnoreCase) >= 0;
 
-        var m = Regex.Match(value, @"Endpoint=sb:\/\/(?<host>[^\/;]+)", RegexOptions.IgnoreCase);
-        if (m.Success && !hasKey)
+        var endpointMatch = Regex.Match(value, @"Endpoint=sb:\/\/(?<host>[^\/;]+)", RegexOptions.IgnoreCase);
+        if (endpointMatch.Success && !(hasKey || hasSas))
         {
-            transport.CustomTokenCredential(m.Groups["host"].Value.Trim(), new DefaultAzureCredential());
+            var fqdn = endpointMatch.Groups["host"].Value.Trim();
+            transport.CustomTokenCredential(fqdn, new DefaultAzureCredential());
             return;
         }
 
         if (!value.Contains(";") && value.Contains(".servicebus.windows.net", StringComparison.OrdinalIgnoreCase))
         {
-            var fq = value.Replace("sb://", "", StringComparison.OrdinalIgnoreCase).TrimEnd('/');
-            transport.CustomTokenCredential(fq, new DefaultAzureCredential());
+            var cleaned = value.Replace("sb://", "", StringComparison.OrdinalIgnoreCase).TrimEnd('/');
+            transport.CustomTokenCredential(cleaned, new DefaultAzureCredential());
             return;
         }
 

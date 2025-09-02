@@ -1,57 +1,168 @@
-﻿using System.Collections.Generic;
-using System.Net;
-using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
+﻿using AutoFixture;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers;
-using SFA.DAS.EmploymentCheck.Functions.UnitTests.TestHelpers;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.UnitTests.AzureFunctions.Triggers.TriggerHelperTests
 {
     public class WhenRunningStartOrchestrator
     {
-        private static async IAsyncEnumerable<OrchestrationMetadata> Empty() { yield break; }
-        private static async IAsyncEnumerable<OrchestrationMetadata> Single() { yield return default; }
+        private Fixture _fixture;
 
-        [Test]
-        public async Task Returns_Conflict_When_Already_Running()
+        private Mock<ITriggerHelper> _triggerHelperMock;
+        private Mock<HttpRequestMessage> _requestMock;
+        private Mock<IDurableOrchestrationClient> _starterMock;
+        private Mock<ILogger> _loggerMock;
+
+        private string _orchestratorName;
+        private string _triggerName;
+        private string _instanceId;
+
+        [SetUp]
+        public void SetUp()
         {
-            var helper = new TriggerHelper();
-            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
-            client.Setup(c => c.GetAllInstancesAsync(It.IsAny<OrchestrationQuery>()))
-                  .Returns(new TestAsyncPageable<OrchestrationMetadata>(Single()));
+            _fixture = new Fixture();
 
-            var logger = new Mock<ILogger>().Object;
-            var ctx = new TestFunctionContext(logger);
-            var req = new TestHttpRequestData(ctx, "POST");
+            _triggerHelperMock = new Mock<ITriggerHelper>();
+            _requestMock = new Mock<HttpRequestMessage>();
+            _starterMock = new Mock<IDurableOrchestrationClient>();
+            _loggerMock = new Mock<ILogger>();
 
-            HttpResponseData res = await helper.StartOrchestrator(req, client.Object, logger, helper, "orchestrator", "trigger");
-
-            Assert.AreEqual(HttpStatusCode.Conflict, res.StatusCode);
+            _orchestratorName = _fixture.Create<string>();
+            _triggerName = _fixture.Create<string>();
+            _instanceId = _fixture.Create<string>();
         }
 
         [Test]
-        public async Task Returns_Accepted_When_Not_Running()
+        public async Task Then_If_An_Orchestrator_Instance_Is_Returned_An_Accepted_HttpResponseMessage_Is_Returned()
         {
-            var helper = new TriggerHelper();
-            var client = new Mock<DurableTaskClient>(MockBehavior.Strict);
-            client.Setup(c => c.GetAllInstancesAsync(It.IsAny<OrchestrationQuery>()))
-                  .Returns(new TestAsyncPageable<OrchestrationMetadata>(Empty()));
-            client.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
-                    It.IsAny<TaskName>(), null, It.IsAny<StartOrchestrationOptions>(), default))
-                  .ReturnsAsync("id");
+            // Arrange
+            var response = new HttpResponseMessage(HttpStatusCode.Accepted) { Content = new StringContent("") };
 
-            var logger = new Mock<ILogger>().Object;
-            var ctx = new TestFunctionContext(logger);
-            var req = new TestHttpRequestData(ctx, "POST");
+            _triggerHelperMock
+                .Setup(t => t.StartOrchestrator(
+                    _requestMock.Object,
+                    _starterMock.Object,
+                    _loggerMock.Object,
+                    _triggerHelperMock.Object,
+                    _orchestratorName,
+                    _triggerName))
+             .ReturnsAsync(response);
 
-            HttpResponseData res = await helper.StartOrchestrator(req, client.Object, logger, helper, "orchestrator", "trigger");
+            _starterMock
+                 .Setup(s => s.StartNewAsync(It.IsAny<string>(), It.IsAny<string>()))
+                 .ReturnsAsync(_instanceId);
 
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            _starterMock
+                .SetupSequence(s => s.CreateCheckStatusResponse(_requestMock.Object, _instanceId, false))
+                .Returns(response);
+
+            var sut = new TriggerHelper();
+
+            // Act
+            var result = await sut.StartOrchestrator(
+                _requestMock.Object,
+                _starterMock.Object,
+                _loggerMock.Object,
+                _triggerHelperMock.Object,
+                _orchestratorName,
+                _triggerName);
+
+            // Assert
+            var resultContent = await result.Content.ReadAsStringAsync();
+            var expectedContent = await response.Content.ReadAsStringAsync();
+            Assert.AreEqual(expectedContent, resultContent);
+            Assert.AreEqual(response.StatusCode, result.StatusCode);
+        }
+
+        [Test]
+        public async Task Then_If_An_Orchestrator_Instance_Is_Not_Returned_A_Conflict_HttpResponseMessage_Is_Returned()
+        {
+            // Arrange
+            var response = new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent($"An error occurred starting [{_orchestratorName}], no instance id was returned.") };
+
+            _triggerHelperMock
+                .Setup(t => t.StartOrchestrator(
+                    _requestMock.Object,
+                    _starterMock.Object,
+                    _loggerMock.Object,
+                    _triggerHelperMock.Object,
+                    _orchestratorName,
+                    _triggerName))
+             .ReturnsAsync(response);
+
+            _starterMock
+                 .Setup(s => s.StartNewAsync(It.IsAny<string>(), It.IsAny<string>()))
+                 .ReturnsAsync(() => null);
+
+            _starterMock
+                .SetupSequence(s => s.CreateCheckStatusResponse(_requestMock.Object, _instanceId, false))
+                .Returns(response);
+
+            var sut = new TriggerHelper();
+
+            // Act
+            var result = await sut.StartOrchestrator(
+                _requestMock.Object,
+                _starterMock.Object,
+                _loggerMock.Object,
+                _triggerHelperMock.Object,
+                _orchestratorName,
+                _triggerName);
+
+            // Assert
+            var resultContent = await result.Content.ReadAsStringAsync();
+            var expectedContent = await response.Content.ReadAsStringAsync();
+            Assert.AreEqual(expectedContent, resultContent);
+            Assert.AreEqual(response.StatusCode, result.StatusCode);
+        }
+
+
+        [Test]
+        public async Task Then_If_CreateCheckStatusResponse_IsNull_A_Conflict_HttpResponseMessage_Is_Returned()
+        {
+            // Arrange
+            var response = new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent($"An error occurred getting the status of [{_orchestratorName}] for instance Id [{_instanceId}].") };
+
+            _triggerHelperMock
+                .Setup(t => t.StartOrchestrator(
+                    _requestMock.Object,
+                    _starterMock.Object,
+                    _loggerMock.Object,
+                    _triggerHelperMock.Object,
+                    _orchestratorName,
+                    _triggerName))
+                .ReturnsAsync(response);
+
+            _starterMock
+                .Setup(s => s.StartNewAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(_instanceId);
+
+            _starterMock
+                .SetupSequence(s => s.CreateCheckStatusResponse(_requestMock.Object, _instanceId, false))
+                .Returns((HttpResponseMessage)null);
+
+            var sut = new TriggerHelper();
+
+            // Act
+            var result = await sut.StartOrchestrator(
+                _requestMock.Object,
+                _starterMock.Object,
+                _loggerMock.Object,
+                _triggerHelperMock.Object,
+                _orchestratorName,
+                _triggerName);
+
+            // Assert
+            var resultContent = await result.Content.ReadAsStringAsync();
+            var expectedContent = await response.Content.ReadAsStringAsync();
+            Assert.AreEqual(expectedContent, resultContent);
+            Assert.AreEqual(response.StatusCode, result.StatusCode);
         }
     }
 }

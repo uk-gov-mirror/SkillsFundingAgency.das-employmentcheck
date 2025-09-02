@@ -1,6 +1,6 @@
-﻿using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using System.Threading.Tasks;
 using SFA.DAS.EmploymentCheck.Data.Models;
 using SFA.DAS.EmploymentCheck.Queries;
 using SFA.DAS.EmploymentCheck.Queries.ProcessEmploymentCheckCacheRequest;
@@ -16,11 +16,12 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
             _dispatcher = dispatcher;
         }
 
-        [Function(nameof(GetEmploymentCheckCacheRequestActivity))]
+        [FunctionName(nameof(GetEmploymentCheckCacheRequestActivity))]
         public async Task<EmploymentCheckCacheRequest[]> GetEmploymentCheckRequestActivityTask([ActivityTrigger] object input)
         {
             var result = await _dispatcher.Send<ProcessEmploymentCheckCacheRequestQueryRequest, ProcessEmploymentCheckCacheRequestQueryResult>(new ProcessEmploymentCheckCacheRequestQueryRequest());
-            return result.EmploymentCheckCacheRequest;
+
+            return result?.EmploymentCheckCacheRequest;
         }
     }
 }

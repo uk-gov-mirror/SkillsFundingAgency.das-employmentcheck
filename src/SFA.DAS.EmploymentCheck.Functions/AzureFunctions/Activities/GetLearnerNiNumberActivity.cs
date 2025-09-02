@@ -1,6 +1,6 @@
-﻿using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using System.Threading.Tasks;
 using SFA.DAS.EmploymentCheck.Data.Models;
 using SFA.DAS.EmploymentCheck.Queries;
 using SFA.DAS.EmploymentCheck.Queries.GetNiNumber;
@@ -16,11 +16,13 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
             _dispatcher = dispatcher;
         }
 
-        [Function(nameof(GetLearnerNiNumberActivity))]
+        [FunctionName(nameof(GetLearnerNiNumberActivity))]
         public async Task<LearnerNiNumber> Get([ActivityTrigger] Data.Models.EmploymentCheck employmentCheck)
         {
             var result = await _dispatcher.Send<GetNiNumberQueryRequest, GetNiNumberQueryResult>(new GetNiNumberQueryRequest(employmentCheck));
+
             return result.LearnerNiNumber;
         }
     }
 }
+

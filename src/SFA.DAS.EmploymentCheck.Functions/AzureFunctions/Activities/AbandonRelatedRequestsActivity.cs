@@ -1,9 +1,9 @@
-﻿using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using SFA.DAS.EmploymentCheck.Abstractions;
-using SFA.DAS.EmploymentCheck.Commands.AbandonRelatedRequests;
 using SFA.DAS.EmploymentCheck.Data.Models;
+using System.Threading.Tasks;
+using SFA.DAS.EmploymentCheck.Commands.AbandonRelatedRequests;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
 {
@@ -16,7 +16,7 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities
             _dispatcher = dispatcher;
         }
 
-        [Function(nameof(AbandonRelatedRequestsActivity))]
+        [FunctionName(nameof(AbandonRelatedRequestsActivity))]
         public async Task Create([ActivityTrigger] EmploymentCheckCacheRequest[] employmentCheckCacheRequests)
         {
             await _dispatcher.Send(new AbandonRelatedRequestsCommand(employmentCheckCacheRequests));

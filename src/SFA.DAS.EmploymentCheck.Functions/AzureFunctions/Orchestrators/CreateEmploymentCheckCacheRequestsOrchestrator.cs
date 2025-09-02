@@ -1,9 +1,9 @@
-﻿using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using SFA.DAS.EmploymentCheck.Data.Models;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Activities;
+using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators
 {
@@ -14,39 +14,52 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators
 
         public CreateEmploymentCheckCacheRequestsOrchestrator(
             ILogger<CreateEmploymentCheckCacheRequestsOrchestrator> logger,
-            IEmploymentCheckDataValidator employmentCheckDataValidator)
+            IEmploymentCheckDataValidator employmentCheckDataValidator
+        )
         {
             _logger = logger;
             _employmentCheckDataValidator = employmentCheckDataValidator;
         }
 
-        [Function(nameof(CreateEmploymentCheckCacheRequestsOrchestrator))]
-        public async Task CreateEmploymentCheckRequestsTask([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(CreateEmploymentCheckCacheRequestsOrchestrator))]
+        public async Task CreateEmploymentCheckRequestsTask([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            Data.Models.EmploymentCheck employmentCheck;
+            Data.Models.EmploymentCheck check;
+
             do
             {
-                employmentCheck = await context.CallActivityAsync<Data.Models.EmploymentCheck>(nameof(GetEmploymentCheckActivity), null);
-                if (employmentCheck != null)
-                {
-                    var learnerNiNumber = await context.CallActivityAsync<LearnerNiNumber>(nameof(GetLearnerNiNumberActivity), employmentCheck);
-                    var employerPayeSchemes = await context.CallActivityAsync<EmployerPayeSchemes>(nameof(GetEmployerPayeSchemesActivity), employmentCheck);
+                check = await context.CallActivityAsync<Data.Models.EmploymentCheck>(nameof(GetEmploymentCheckActivity), null);
 
-                    var data = new EmploymentCheckData(employmentCheck, learnerNiNumber, employerPayeSchemes);
-                    var errors = _employmentCheckDataValidator.EmploymentCheckDataHasError(data);
+                await EnrichEmploymentCheckData(context, check);
 
-                    if (string.IsNullOrEmpty(errors))
-                    {
-                        await context.CallActivityAsync(nameof(CreateEmploymentCheckCacheRequestActivity), data);
-                    }
-                    else
-                    {
-                        employmentCheck.ErrorType = errors;
-                        await context.CallActivityAsync(nameof(StoreCompletedEmploymentCheckActivity), data);
-                    }
-                }
+            } while (check != null);
+
+            _logger.LogInformation($"\n\n{nameof(CreateEmploymentCheckCacheRequestsOrchestrator)}: {nameof(GetEmploymentCheckActivity)} returned no results. Nothing to process.");
+
+        }
+
+        private async Task EnrichEmploymentCheckData(IDurableOrchestrationContext context, Data.Models.EmploymentCheck check)
+        {
+            if (check == null) return;
+
+            var learnerNiNumberTask = context.CallActivityAsync<LearnerNiNumber>(nameof(GetLearnerNiNumberActivity), check);
+            var employerPayeSchemesTask = context.CallActivityAsync<EmployerPayeSchemes>(nameof(GetEmployerPayeSchemesActivity), check);
+
+            await Task.WhenAll(learnerNiNumberTask, employerPayeSchemesTask);
+
+            var result = new EmploymentCheckData(check, learnerNiNumberTask.Result, employerPayeSchemesTask.Result);
+
+            var errors = _employmentCheckDataValidator.EmploymentCheckDataHasError(result);
+
+            if (string.IsNullOrEmpty(errors))
+            {
+                await context.CallActivityAsync(nameof(CreateEmploymentCheckCacheRequestActivity), result);
             }
-            while (employmentCheck != null);
+            else
+            {
+                result.EmploymentCheck.ErrorType = errors;
+                await context.CallActivityAsync(nameof(StoreCompletedEmploymentCheckActivity), result);
+            }
         }
     }
 }

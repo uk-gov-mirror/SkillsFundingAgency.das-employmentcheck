@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Extensions.Logging;
 using SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Orchestrators;
 
 namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
@@ -13,37 +15,30 @@ namespace SFA.DAS.EmploymentCheck.Functions.AzureFunctions.Triggers
     {
         private const string InstanceIdPrefix = "CreateEmploymentCheck-";
 
-        [Function(nameof(CreateEmploymentCheckRequestsOrchestratorHttpTrigger))]
-        public static async Task<HttpResponseData> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orchestrators/CreateApprenticeEmploymentChecksOrchestrator")] HttpRequestData req,
-            [DurableClient] DurableTaskClient starter,
-            FunctionContext context)
+        [FunctionName(nameof(CreateEmploymentCheckRequestsOrchestratorHttpTrigger))]
+        public static async Task<HttpResponseMessage> HttpStart(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orchestrators/CreateEmploymentCheckRequestsOrchestrator")] HttpRequestMessage req,
+            [DurableClient] IDurableOrchestrationClient starter,
+            ILogger log)
         {
-            var query = new OrchestrationQuery
-            {
-                InstanceIdPrefix = InstanceIdPrefix,
-                Statuses = new[]
-                {
-                    OrchestrationRuntimeStatus.Pending,
-                    OrchestrationRuntimeStatus.Running,
-                    OrchestrationRuntimeStatus.ContinuedAsNew
-                }
-            };
+            var triggerHelper = new TriggerHelper();
+            var existingInstances = await triggerHelper.GetRunningInstances(nameof(CreateEmploymentCheckRequestsOrchestratorHttpTrigger),
+                InstanceIdPrefix, starter, log);
 
-            await foreach (var _ in starter.GetAllInstancesAsync(query))
+            if (!existingInstances.DurableOrchestrationState.Any())
             {
-                var conflict = req.CreateResponse(HttpStatusCode.Conflict);
-                await conflict.WriteStringAsync("An instance of CreateEmploymentCheckCacheRequestsOrchestrator is already running.");
-                return conflict;
+                log.LogInformation($"Triggering {nameof(CreateEmploymentCheckCacheRequestsOrchestrator)}");
+
+                var instanceId = await starter.StartNewAsync(nameof(CreateEmploymentCheckCacheRequestsOrchestrator), $"{InstanceIdPrefix}{Guid.NewGuid()}");
+
+                log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+                return starter.CreateCheckStatusResponse(req, instanceId);
             }
 
-            var options = new StartOrchestrationOptions
+            return new HttpResponseMessage(HttpStatusCode.Conflict)
             {
-                InstanceId = $"{InstanceIdPrefix}{Guid.NewGuid()}"
+                Content = new StringContent($"An instance of {nameof(CreateEmploymentCheckCacheRequestsOrchestrator)} is already running."),
             };
-
-            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(new TaskName(nameof(CreateEmploymentCheckCacheRequestsOrchestrator)), input: null, options: options);
-            return starter.CreateCheckStatusResponse(req, instanceId, HttpStatusCode.Accepted);
         }
     }
 }
