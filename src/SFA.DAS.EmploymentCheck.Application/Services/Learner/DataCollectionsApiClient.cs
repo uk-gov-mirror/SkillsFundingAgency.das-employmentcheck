@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
 {
-    public class DataCollectionsApiClient : GetApiClient<DataCollectionsApiConfiguration>, IDataCollectionsApiClient<DataCollectionsApiConfiguration> 
+    public class DataCollectionsApiClient : GetApiClient<DataCollectionsApiConfiguration>, IDataCollectionsApiClient<DataCollectionsApiConfiguration>
     {
         private readonly DataCollectionsApiConfiguration _configuration;
         private readonly IDcTokenService _tokenService;
@@ -18,7 +18,7 @@ namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
 
         public DataCollectionsApiClient(
             IHttpClientFactory httpClientFactory,
-            DataCollectionsApiConfiguration configuration, 
+            DataCollectionsApiConfiguration configuration,
             IWebHostEnvironment hostingEnvironment,
             IDcTokenService tokenService,
             ILogger<DataCollectionsApiClient> logger) : base(httpClientFactory, configuration, hostingEnvironment)
@@ -35,11 +35,19 @@ namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
 
         private async Task RetrieveAuthenticationToken(HttpRequestMessage httpRequestMessage)
         {
-            _logger.LogInformation($"{nameof(DataCollectionsApiClient)}: Getting access token...");
-            var accessToken = await GetDataCollectionsApiAccessToken();
+            _logger.LogInformation("{Client}: Getting DC access token…", nameof(DataCollectionsApiClient));
+
+            var auth = await GetDataCollectionsApiAccessToken();
+
+            if (auth == null || string.IsNullOrWhiteSpace(auth.AccessToken))
+            {
+                _logger.LogError("{Client}: Failed to acquire DC access token (null/empty).", nameof(DataCollectionsApiClient));
+                throw new HttpRequestException("Failed to acquire DC access token.");
+            }
+
             if (!HostingEnvironment.IsDevelopment() && !HttpClient.BaseAddress.IsLoopback)
             {
-                httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.AccessToken);
+                httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
             }
         }
 
