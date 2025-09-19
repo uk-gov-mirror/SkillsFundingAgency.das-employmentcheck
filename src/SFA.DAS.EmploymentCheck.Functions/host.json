@@ -15,5 +15,9 @@
       "maxOrchestrationActions": "10000000",
       "hubName": "EmploymentCheckProcessingHub"
     }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[3.*, 4.0.0)"
   }
 }
