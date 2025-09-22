@@ -58,7 +58,12 @@ public static class NServiceBusStartupExtensions
         var hasKey = value.IndexOf("SharedAccessKey", StringComparison.OrdinalIgnoreCase) >= 0;
         var hasSas = value.IndexOf("SharedAccessSignature", StringComparison.OrdinalIgnoreCase) >= 0;
 
-        var endpointMatch = Regex.Match(value, @"Endpoint=sb:\/\/(?<host>[^\/;]+)", RegexOptions.IgnoreCase);
+        var endpointMatch = Regex.Match(
+            value,
+            @"Endpoint=sb:\/\/(?<host>[^\/;]+)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(250));
+
         if (endpointMatch.Success && !(hasKey || hasSas))
         {
             var fqdn = endpointMatch.Groups["host"].Value.Trim();
