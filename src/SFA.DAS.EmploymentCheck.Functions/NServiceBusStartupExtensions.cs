@@ -13,16 +13,22 @@ public static class NServiceBusStartupExtensions
     {
         var endpointConfiguration = new EndpointConfiguration("SFA.DAS.EmploymentCheck");
 
-        endpointConfiguration.AssemblyScanner()
-            .ExcludeAssemblies(
-                "Azure.Core.dll",
-                "Microsoft.Bcl.AsyncInterfaces.dll",
-                "System.Threading.Tasks.Extensions.dll",
-                "System.Reactive.Core.dll",
-                "System.Reactive.dll",
-                "System.Reactive.Linq.dll",
-                "System.ClientModel.dll"
-            );
+        var scanner = endpointConfiguration.AssemblyScanner();
+        scanner.ExcludeAssemblies(
+            "Azure.Core",
+            "Microsoft.Bcl.AsyncInterfaces",
+            "System.Threading.Tasks.Extensions",
+            "System.Reactive.Core",
+            "System.Reactive",
+            "System.Reactive.Linq",
+            "System.ClientModel",
+            "Grpc.Core.Api",
+            "Grpc.Net.Client",
+            "Grpc.Net.Common",
+            "Google.Protobuf"
+        );
+        scanner.ThrowExceptions = false;
+        scanner.ScanAppDomainAssemblies = true;
 
         var raw = appSettings.NServiceBusConnectionString?.Trim();
 
