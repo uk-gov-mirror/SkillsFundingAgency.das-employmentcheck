@@ -7,6 +7,8 @@ using NServiceBus.Newtonsoft.Json;
 using NServiceBus.Transport.AzureServiceBus;
 using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
 
+namespace SFA.DAS.EmploymentCheck.Functions;
+
 public static class NServiceBusStartupExtensions
 {
     public static IServiceCollection AddNServiceBus(this IServiceCollection services, ApplicationSettings appSettings)
@@ -14,7 +16,6 @@ public static class NServiceBusStartupExtensions
         var endpointConfiguration = new EndpointConfiguration("SFA.DAS.EmploymentCheck");
 
         var scanner = endpointConfiguration.AssemblyScanner();
-
         scanner.ExcludeAssemblies(
             "Azure.Core",
             "Microsoft.Bcl.AsyncInterfaces",
@@ -29,11 +30,8 @@ public static class NServiceBusStartupExtensions
             "Grpc.Net.Common",
             "Google.Protobuf"
         );
-
         scanner.ThrowExceptions = false;
-
         scanner.ScanAppDomainAssemblies = false;
-
 
         var raw = appSettings.NServiceBusConnectionString?.Trim();
 
