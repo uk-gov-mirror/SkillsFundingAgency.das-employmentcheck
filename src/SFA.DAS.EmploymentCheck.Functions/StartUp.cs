@@ -99,7 +99,6 @@ namespace SFA.DAS.EmploymentCheck.Functions
             builder.Services.AddTransient<ILearnerDataTelemetrySanitizer, LearnerDataTelemetrySanitizer>();
             builder.Services.AddSingleton<ITelemetryInitializer, TelemetryIntializer>();
 
-            var logger = serviceProvider.GetService<ILoggerProvider>().CreateLogger(GetType().AssemblyQualifiedName);
             var applicationSettings = config.GetSection("ApplicationSettings").Get<ApplicationSettings>();
 
             builder.Services
