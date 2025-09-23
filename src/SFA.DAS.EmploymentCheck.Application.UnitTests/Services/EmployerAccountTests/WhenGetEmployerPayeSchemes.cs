@@ -21,7 +21,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
 {
     public class WhenGetEmployerPayeSchemes
     {
-        private IEmployerAccountService _sut;
+        private EmployerAccountService _sut;
         private Fixture _fixture;
         private Mock<IAccountsResponseRepository> _repositoryMock;
         private Mock<IEmployerAccountApiClient<EmployerAccountApiConfiguration>> _apiClientMock;
@@ -37,7 +37,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
 
             _apiClientMock = new Mock<IEmployerAccountApiClient<EmployerAccountApiConfiguration>>();
             _repositoryMock = new Mock<IAccountsResponseRepository>();
-            
+
             _apiOptionsRepositoryMock = new Mock<IApiOptionsRepository>();
 
             _settings = new ApiRetryOptions
@@ -228,7 +228,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
             // Assert
             result.Should().NotBeNull();
             result.HttpStatusCode.Should().Be(httpResponse.StatusCode);
-            result.PayeSchemes.Count().Should().Be(0);
+            result.PayeSchemes.Count.Should().Be(0);
         }
 
         [Test]
@@ -293,7 +293,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.Services.EmployerAccount
             result.Should().NotBeNull();
             result.HttpStatusCode.Should().Be(employerPayeSchemes.HttpStatusCode);
             result.PayeSchemes.Should().NotBeNull();
-            result.PayeSchemes.Count().Should().Be(0);
+            result.PayeSchemes.Count.Should().Be(0);
         }
     }
 }
