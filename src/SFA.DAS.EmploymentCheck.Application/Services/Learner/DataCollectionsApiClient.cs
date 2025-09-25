@@ -54,7 +54,7 @@ namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
         private async Task<AuthResult> GetDataCollectionsApiAccessToken()
         {
             var result = await _tokenService.GetTokenAsync(
-                $"https://login.microsoftonline.com/{_configuration.Tenant}/oauth2/v2.0/token",
+                $"https://login.microsoftonline.com/{_configuration.Tenant}",
                 "client_credentials",
                 _configuration.ClientSecret,
                 _configuration.ClientId,
