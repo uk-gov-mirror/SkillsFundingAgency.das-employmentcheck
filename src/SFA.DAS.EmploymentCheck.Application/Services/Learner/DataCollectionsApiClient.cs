@@ -54,17 +54,7 @@ namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
 
         private async Task<AuthResult> GetDataCollectionsApiAccessToken()
         {
-            var authority = $"https://login.microsoftonline.com/{_configuration.Tenant}";
-
-            if (_configuration.Tenant.EndsWith("/oauth2/token", StringComparison.OrdinalIgnoreCase) ||
-                _configuration.Tenant.EndsWith("/oauth2/v2.0/token", StringComparison.OrdinalIgnoreCase))
-            {
-                authority = _configuration.Tenant;
-            }
-            else
-            {
-                authority = authority.TrimEnd('/') + "/oauth2/v2.0/token";
-            }
+            var authority = NormalizeAuthority(_configuration.Tenant);
 
             var result = await _tokenService.GetTokenAsync(
                 authority,
@@ -74,6 +64,43 @@ namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
                 _configuration.IdentifierUri);
 
             return result;
+        }
+
+        private static string NormalizeAuthority(string tenantValue)
+        {
+            if (string.IsNullOrWhiteSpace(tenantValue))
+                throw new InvalidOperationException("DCLearnerDataApiTenant is required.");
+
+            var v = tenantValue.Trim();
+
+
+            if (Uri.TryCreate(v, UriKind.Absolute, out var abs))
+            {
+                var path = abs.AbsolutePath.TrimEnd('/');
+                if (path.EndsWith("/oauth2/token", StringComparison.OrdinalIgnoreCase) ||
+                    path.EndsWith("/oauth2/v2.0/token", StringComparison.OrdinalIgnoreCase))
+                {
+                    return abs.ToString();
+                }
+                
+                return new Uri(new Uri($"{abs.Scheme}://{abs.Authority}"),
+                               $"{path.TrimEnd('/')}/oauth2/v2.0/token").ToString();
+            }
+
+            v = v.TrimStart('/');
+
+            if (v.Contains("oauth2", StringComparison.OrdinalIgnoreCase))
+            {
+                var candidate = $"https://login.microsoftonline.com/{v}";
+                if (candidate.EndsWith("/oauth2/token", StringComparison.OrdinalIgnoreCase) ||
+                    candidate.EndsWith("/oauth2/v2.0/token", StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+                return candidate.TrimEnd('/') + "/oauth2/v2.0/token";
+            }
+
+            return $"https://login.microsoftonline.com/{v.TrimEnd('/')}/oauth2/v2.0/token";
         }
     }
 }
