@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SFA.DAS.EmploymentCheck.Application.ApiClients;
 using SFA.DAS.EmploymentCheck.Data.Models;
 using SFA.DAS.EmploymentCheck.Infrastructure.Configuration;
+using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -53,8 +54,20 @@ namespace SFA.DAS.EmploymentCheck.Application.Services.Learner
 
         private async Task<AuthResult> GetDataCollectionsApiAccessToken()
         {
+            var authority = $"https://login.microsoftonline.com/{_configuration.Tenant}";
+
+            if (_configuration.Tenant.EndsWith("/oauth2/token", StringComparison.OrdinalIgnoreCase) ||
+                _configuration.Tenant.EndsWith("/oauth2/v2.0/token", StringComparison.OrdinalIgnoreCase))
+            {
+                authority = _configuration.Tenant;
+            }
+            else
+            {
+                authority = authority.TrimEnd('/') + "/oauth2/v2.0/token";
+            }
+
             var result = await _tokenService.GetTokenAsync(
-                $"https://login.microsoftonline.com/{_configuration.Tenant}",
+                authority,
                 "client_credentials",
                 _configuration.ClientSecret,
                 _configuration.ClientId,
