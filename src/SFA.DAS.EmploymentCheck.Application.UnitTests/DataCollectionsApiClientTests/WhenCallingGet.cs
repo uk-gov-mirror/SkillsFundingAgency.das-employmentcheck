@@ -42,10 +42,7 @@ namespace SFA.DAS.EmploymentCheck.Application.UnitTests.DataCollectionsApiClient
                 .With(c => c.BaseUrl, "https://test.local")
                 .Create();
 
-            _token = _fixture.Build<AuthResult>()
-                .With(t => t.AccessToken, "test_access_token")
-                .With(t => t.TokenType, "Bearer")
-                .Create();
+            _token = _fixture.Create<AuthResult>();
 
             _tokenServiceMock = new Mock<IDcTokenService>();
             _tokenServiceMock.Setup(ts => ts.GetTokenAsync(
