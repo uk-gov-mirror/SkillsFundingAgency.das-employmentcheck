@@ -32,7 +32,7 @@ namespace SFA.DAS.EmploymentCheck.Functions
                 "Google.Protobuf"
             );
             scanner.ThrowExceptions = false;
-            scanner.ScanAppDomainAssemblies = false;
+            scanner.ScanAppDomainAssemblies = true;
 
             var raw = appSettings.NServiceBusConnectionString?.Trim();
 
@@ -47,6 +47,12 @@ namespace SFA.DAS.EmploymentCheck.Functions
             }
 
             endpointConfiguration.UseSerialization<NewtonsoftJsonSerializer>();
+
+            var conventions = endpointConfiguration.Conventions();
+            conventions.DefiningCommandsAs(t => t.Namespace != null && t.Namespace.EndsWith(".Commands"));
+            conventions.DefiningEventsAs(t => t.Namespace != null && t.Namespace.EndsWith(".Events"));
+            conventions.DefiningMessagesAs(t => t.Namespace != null && t.Namespace.EndsWith(".Messages"));
+
             endpointConfiguration.EnableInstallers();
             endpointConfiguration.SendFailedMessagesTo("error");
 
