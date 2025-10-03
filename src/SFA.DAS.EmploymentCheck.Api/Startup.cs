@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -7,12 +6,14 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using SFA.DAS.Api.Common.AppStart;
-using SFA.DAS.Api.Common.Configuration;
 using SFA.DAS.Api.Common.Infrastructure;
 using SFA.DAS.Configuration.AzureTableStorage;
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace SFA.DAS.EmploymentCheck.Api
 {
@@ -24,13 +25,14 @@ namespace SFA.DAS.EmploymentCheck.Api
         {
             var builder = new ConfigurationBuilder()
                 .AddConfiguration(configuration)
+                .SetBasePath(Directory.GetCurrentDirectory())
                 .AddEnvironmentVariables();
 
             builder.AddJsonFile("appsettings.Development.json", optional: true);
 
             builder.AddAzureTableStorage(options =>
             {
-                options.ConfigurationKeys = configuration["ConfigNames"]?.Split(",") ?? new string[0];
+                options.ConfigurationKeys = configuration["ConfigNames"]?.Split(",") ?? Array.Empty<string>();
                 options.StorageConnectionString = configuration["ConfigurationStorageConnectionString"];
                 options.EnvironmentName = configuration["EnvironmentName"];
                 options.PreFixConfigurationKeys = false;
@@ -50,31 +52,36 @@ namespace SFA.DAS.EmploymentCheck.Api
                 c.CustomSchemaIds(type => type.FullName);
             });
 
-            var envName = Configuration["EnvironmentName"] ?? "";
-
-            if (!envName.Equals("LOCAL", System.StringComparison.OrdinalIgnoreCase))
+            var envName = Configuration["EnvironmentName"] ?? string.Empty;
+            if (!envName.Equals("LOCAL", StringComparison.OrdinalIgnoreCase))
             {
-                var azureAd = Configuration.GetSection("AzureAd").Get<AzureActiveDirectoryConfiguration>() ?? new AzureActiveDirectoryConfiguration();
-                var tenant = Configuration["AzureAd:Tenant"] ?? azureAd.Tenant ?? "";
+                var tenant = Configuration["AzureAd:Tenant"] ?? string.Empty;
                 var identifierUri = Configuration["AzureAd:IdentifierUri"];
                 var clientId = Configuration["AzureAd:ClientId"];
 
-                var policies = new Dictionary<string, string> { { "default", PolicyNames.Default } };
-                services.AddAuthentication(azureAd, policies);
-
-                services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                    .AddJwtBearer(options =>
+                services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options
+                    =>
+                {
+                    options.Authority = $"https://login.microsoftonline.com/{tenant}/v2.0";
+                    var audiences = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(identifierUri)) audiences.Add(identifierUri);
+                    if (!string.IsNullOrWhiteSpace(clientId)) audiences.Add($"api://{clientId}");
+                    options.TokenValidationParameters = new TokenValidationParameters
                     {
-                        options.Authority = $"https://login.microsoftonline.com/{tenant}/v2.0";
-                        var audiences = new List<string>();
-                        if (!string.IsNullOrWhiteSpace(identifierUri)) audiences.Add(identifierUri);
-                        if (!string.IsNullOrWhiteSpace(clientId)) audiences.Add($"api://{clientId}");
-                        options.TokenValidationParameters = new TokenValidationParameters
-                        {
-                            ValidateAudience = true,
-                            ValidAudiences = audiences
-                        };
-                    });
+                        ValidateAudience = true,
+                        ValidAudiences = audiences
+                    };
+                });
+
+                services.AddAuthorization(o =>
+                {
+                    o.AddPolicy(PolicyNames.Default, p => p.RequireAuthenticatedUser());
+                });
 
                 services.AddMvc(o =>
                 {
