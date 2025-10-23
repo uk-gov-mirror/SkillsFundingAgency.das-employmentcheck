@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -5,15 +6,19 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SFA.DAS.Api.Common.Infrastructure;
 using SFA.DAS.Configuration.AzureTableStorage;
+using SFA.DAS.EmploymentCheck.Api.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace SFA.DAS.EmploymentCheck.Api
 {
@@ -45,12 +50,18 @@ namespace SFA.DAS.EmploymentCheck.Api
         {
             services.AddControllers();
             services.AddHealthChecks();
+            services.AddNLogForApi();
 
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SFA.DAS.EmploymentCheck.Api", Version = "v1.0" });
                 c.CustomSchemaIds(type => type.FullName);
             });
+
+            services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), Configuration));
+
+            services.Configure<EmploymentCheckSettings>(Configuration.GetSection("ApplicationSettings"));
+            services.AddSingleton(cfg => cfg.GetService<IOptions<EmploymentCheckSettings>>().Value);
 
             var envName = Configuration["EnvironmentName"] ?? string.Empty;
             if (!envName.Equals("LOCAL", StringComparison.OrdinalIgnoreCase))
@@ -89,10 +100,17 @@ namespace SFA.DAS.EmploymentCheck.Api
                 }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
             }
 
+            services
+                .AddRepositories()
+                .AddServices()
+                .AddHandlers()
+                ;
+
             services.AddApiVersioning(opt =>
             {
                 opt.ApiVersionReader = new HeaderApiVersionReader("X-Version");
             });
+            
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
