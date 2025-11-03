@@ -75,13 +75,28 @@ namespace SFA.DAS.EmploymentCheck.Api
                     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 })
-                .AddJwtBearer(options
-                    =>
+                .AddJwtBearer(options =>
                 {
                     options.Authority = $"https://login.microsoftonline.com/{tenant}/v2.0";
-                    var audiences = new List<string>();
-                    if (!string.IsNullOrWhiteSpace(identifierUri)) audiences.Add(identifierUri);
-                    if (!string.IsNullOrWhiteSpace(clientId)) audiences.Add($"api://{clientId}");
+
+                    var audiences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    if (!string.IsNullOrWhiteSpace(identifierUri))
+                    {
+                        audiences.Add(identifierUri);
+
+                        if (identifierUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                            && !identifierUri.EndsWith("-ar", StringComparison.OrdinalIgnoreCase))
+                        {
+                            audiences.Add($"{identifierUri}-ar");
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(clientId))
+                    {
+                        audiences.Add($"api://{clientId}");
+                    }
+
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateAudience = true,
