@@ -67,7 +67,7 @@ namespace SFA.DAS.EmploymentCheck.Api
             if (!envName.Equals("LOCAL", StringComparison.OrdinalIgnoreCase))
             {
                 var tenant = Configuration["AzureAd:Tenant"] ?? string.Empty;
-                var identifierUri = Configuration["AzureAd:IdentifierUri"];
+                var identifierUri = Configuration["AzureAd:Identifier"];
                 var clientId = Configuration["AzureAd:ClientId"];
 
                 services.AddAuthentication(options =>
